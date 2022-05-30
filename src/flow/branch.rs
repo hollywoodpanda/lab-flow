@@ -10,7 +10,7 @@ use crate::config::file::{
     BUGFIX_BRANCH_NAME_KEY,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Branch {
     Feature(String),
     Hotfix(String),
@@ -59,7 +59,7 @@ impl Sourceable for Branch {
                     Err(_) => Err("Release branch prefix not found in configuration file")
                 }
             },
-            _ => Err("No prefix for this branch")
+            _ => Ok("".to_string()) //No prefix? No problem!
         }
     }
 
@@ -77,11 +77,10 @@ impl Sourceable for Branch {
             Err(_) => return Err("Main branch name not found")
         };
 
-        let release_name = match get_config_value(RELEASE_BRANCH_NAME_KEY) {
-            Ok(release_name) => release_name,
-            Err(_) => return Err("Release branch name not found")
+        let release_prefix = match get_config_value(RELEASE_BRANCH_NAME_KEY) {
+            Ok(release_prefix) => release_prefix,
+            Err(_) => return Err("Release branch prefix not found")
         };
-        
 
         match self {
 
@@ -100,8 +99,11 @@ impl Sourceable for Branch {
 
             Branch::Bugfix(_) => {
 
+                // FIXME: We don't have the suffix part of the branch name
+                // FIXME: Find out the higher "release/{VERSION}" branch and use its name as the suffix
+                // ... if using git lab, there'll be only one release branch
                 if released {
-                    branches.push(Branch::Release(release_name));
+                    branches.push(Branch::Release(release_prefix));
                 }
 
                 branches.push(Branch::Develop(develop_name));

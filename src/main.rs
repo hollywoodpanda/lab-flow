@@ -4,6 +4,8 @@ mod config;
 
 mod flow;
 
+use std::process;
+
 use config::file::{
     create_config_file,
     contains_config_file,
@@ -11,13 +13,19 @@ use config::file::{
     MAIN_BRANCH_NAME_KEY,
 };
 
+use config::error::{INIT_ERROR_CODE};
+
 use command::git::{Git, Gitable};
 
 fn main() {
+    println!("git lab plugin");
     if !contains_config_file() {
         match create_config_file() {
-            Ok(_) => println!("{}", "Configuration file created"),
-            Err(e) => println!("{}", e)
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("{}", e);
+                process::exit(INIT_ERROR_CODE);
+            }
         }
     } else {
         println!("{}", "Configuration file \".git/lab.conf\" already exists");
@@ -29,6 +37,7 @@ fn main() {
         println!("Feature branch: {}", get_config_value("FEATURE_BRANCH_NAME").unwrap());
 
         //Starting a branch for testing...
+
 
     }
 }
