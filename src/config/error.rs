@@ -1,0 +1,1 @@
+pub const INIT_ERROR_CODE: i32 = -1;

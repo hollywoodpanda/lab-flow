@@ -21,6 +21,8 @@ impl Runnable for Runner {
 
     fn run (command: &str) -> Result<String, String> {
 
+        println!("{}", command);
+
         let command_result: Result<Output, std::io::Error> = if cfg!(target_os = "windows") {
             run_for_windows(command)
         } else {
@@ -37,7 +39,7 @@ impl Runnable for Runner {
                     Ok(stdout) => Ok(stdout),
 
                     Err(stderr) => {
-                        let stderr_message = format!("{:?}", stderr);
+                        let stderr_message = format!("{:?}", stderr.utf8_error());
                         println!("{}", stderr_message);
                         Err(stderr_message)
                     }
@@ -88,8 +90,6 @@ impl Browseable for Browser {
 
 fn run_for_windows (command: &str) -> Result<Output, std::io::Error> {
 
-    println!("[DEBUG][WIN] Running command: {}", command);
-
     match Command::new("cmd")
             .args(["/C", command])
             .output() {
@@ -103,9 +103,6 @@ fn run_for_windows (command: &str) -> Result<Output, std::io::Error> {
 }
 
 fn run_for_nix (command: &str) -> Result<Output, std::io::Error> {
-
-    println!("[DEBUG][NIX] Running command: {}", command);
-
     match Command::new("sh")
             .args(["-c", command])
             .output() {

@@ -38,25 +38,6 @@ impl std::fmt::Display for FileError {
     }
 }
 
-fn commit_main_branch (branch_name: String) -> Result<(), String> {
-
-    match Runner::run("git add .") {
-        Ok(_) => {
-
-            match Runner::run(&format!("git commit -m \"{}\"", branch_name)) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(e)
-            }
-
-        },
-        Err(error_message) => {
-            return Err(error_message);
-        }
-    }
-
-}
-
-
 fn read_config_file () -> Result<String, Box<dyn std::error::Error>> {
 
     let file_string = std::fs::read_to_string(CONFIG_FILE_PATH)?;
@@ -84,12 +65,6 @@ fn parse_config_file (file_string: &str) -> Result<Vec<Configuration>, Box<dyn s
 
 }
 
-pub fn contains_config_file () -> bool {
-
-    std::path::Path::new(CONFIG_FILE_PATH).exists()
-
-}
-
 fn read_branch_name (
     message: &str, 
     default_name: &str,
@@ -102,7 +77,7 @@ fn read_branch_name (
     loop {
 
         println!("{}", message);
-    
+
         std::io::stdin().read_line(&mut branch_name)?;
         // Removing the newline character
         branch_name.pop();
@@ -118,7 +93,7 @@ fn read_branch_name (
         }
 
         if used_names.contains(&branch_name) {
-            println!("{}", "Branch name already used");
+            println!("Branch name already used, please choose another one.");
             branch_name = String::new();
         } else {
             break;
@@ -135,6 +110,11 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
 
     let mut names: Vec<String> = Vec::new();
     let mut file_string: String;
+    
+    match Git::init() {
+        Ok(_) => {},
+        Err(e) => return Err(Box::new(FileError::new(e)))
+    }
 
     let feature_name = read_branch_name(
         "Enter the prefix of the feature branches (feature/):", 
@@ -186,18 +166,9 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
     file_string = file_string + &format!("{}={}\n", DEVELOP_BRANCH_NAME_KEY, develop_name);
     
     let develop_name_to_create = develop_name.clone();
-    let default_branch = develop_name.clone();
-    
-    match Git::create_branch(Branch::Develop(develop_name_to_create)) {
-        Ok(_) => {
-            println!("Develop branch created");
-        },
-        Err(e) => {
-            println!("{}", e);
-            return Err(Box::new(FileError::new("Error creating develop branch".to_string())));
-        }
-    }
-
+    let develop_name_to_push = develop_name.clone();
+    let default_branch_name = develop_name.clone();
+    let develop_name_to_checkout = develop_name_to_create.clone();    
     names.push(develop_name);
     
     let main_name = read_branch_name(
@@ -207,40 +178,70 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         &names
     )?;
 
-    let main_name_to_create = main_name.clone();
-    let commit_branch_name = main_name.clone();
-
-    match Git::create_branch(Branch::Main(main_name_to_create)) {
-        Ok(_) => {
-            println!("Main branch created");
-        },
+    match Runner::run(&format!("git checkout -b {}", main_name)) {
+        Ok(_) => {},
         Err(e) => {
-            println!("{}", e);
-            return Err(Box::new(FileError::new("Error creating main branch".to_string())));
+            eprintln!("{}", e);
+            return Err(Box::new(FileError::new(e)));
+        }
+    }
+
+    match Runner::run(&format!("git push origin {}", main_name)) {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("{}", e);
+        }
+    }
+
+    match Git::add(vec![".".to_string()]) {
+        Ok(_) => {
+            match Git::commit("Initial commit".to_string()) {
+                Ok(_) => {},
+                Err(err) => {
+                    eprintln!("{}", err);
+                    return Err(Box::new(FileError::new(err)));
+                }
+            }
+        },
+        Err(err) => {
+            eprintln!("{}", err);
+            return Err(Box::new(FileError::new(err)));
+        }
+    }
+
+    match Git::create_branch(Branch::Develop(develop_name_to_create)) {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("{}", e);
+            return Err(Box::new(FileError::new("Error creating develop branch".to_string())));
+        }
+    }
+
+    match Runner::run(&format!("git checkout {}", develop_name_to_checkout)) {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("{}", e);
+            return Err(Box::new(FileError::new(e)));
+        }
+    }
+   
+    // TODO: Check if the origin name may vary and configure it in the config file
+    match Runner::run(&format!("git push origin {}", develop_name_to_push)) {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("{}", e);
         }
     }
 
     file_string = file_string + &format!("{}={}\n", MAIN_BRANCH_NAME_KEY, main_name);
 
-    match commit_main_branch(commit_branch_name) {
-        Ok(_) => {
-            println!("Main branch committed");
-        },
-        Err(e) => {
-            println!("{}", e);
-            return Err(Box::new(FileError::new("Error commiting main branch".to_string())));
-        }
-    }
-    
     std::fs::write(CONFIG_FILE_PATH, file_string)?;
 
     // Checking out default branch
-    match Runner::run(format!("git checkout {}", default_branch).as_str()) {
-        Ok(_) => {
-            println!("Default branch checked out");
-        },
+    match Runner::run(format!("git checkout {}", default_branch_name).as_str()) {
+        Ok(_) => {},
         Err(e) => {
-            println!("{}", e);
+            eprintln!("{}", e);
             return Err(Box::new(FileError::new("Error checking out default branch".to_string())));
         }
     }
@@ -264,5 +265,11 @@ pub fn get_config_value (key: &str) -> Result<String, Box<dyn std::error::Error>
         None => Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Key not found")))
 
     }
+
+}
+
+pub fn contains_config_file () -> bool {
+
+    std::path::Path::new(CONFIG_FILE_PATH).exists()
 
 }
