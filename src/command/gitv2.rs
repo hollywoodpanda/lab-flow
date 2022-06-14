@@ -90,6 +90,7 @@ impl GitV2 {
         Ok(
             regex
                 .captures_iter(&branch_only_commits_result)
+                .filter(|capture| capture.get(0).is_some())
                 .map(|capture| capture.get(0).unwrap().as_str().to_string())
                 .collect()
         )
@@ -124,6 +125,7 @@ impl GitV2 {
         Ok(
             regex  
                 .captures_iter(&branch_commits_result)
+                .filter(|capture| capture.get(0).is_some())
                 .map(|capture| capture.get(0).unwrap().as_str().to_string())
                 .collect()
         )

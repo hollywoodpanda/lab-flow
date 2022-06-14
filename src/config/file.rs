@@ -105,7 +105,6 @@ fn read_branch_name (
 
 }
 
-// TODO: Se nome para branch já foi informado, não podemos criar outra com o mesmo nome
 pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
 
     let mut names: Vec<String> = Vec::new();
@@ -167,8 +166,7 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
     
     let develop_name_to_create = develop_name.clone();
     let develop_name_to_push = develop_name.clone();
-    let default_branch_name = develop_name.clone();
-    let develop_name_to_checkout = develop_name_to_create.clone();    
+    let default_branch_name = develop_name.clone();  
     names.push(develop_name);
     
     let main_name = read_branch_name(
@@ -178,7 +176,13 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         &names
     )?;
 
-    Git::checkout(&Branch::Main(main_name.clone()), true);
+    // TODO: Do we need to checkout?
+    match Git::checkout(&Branch::Main(main_name.clone()), true) {
+        Ok(_) => {},
+        Err(e) => {
+            println!("[ERROR] {}", e);
+        }
+    }
 
     match Runner::run(&format!("git push origin {}", main_name)) {
         Ok(_) => {},
@@ -223,8 +227,13 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
 
     std::fs::write(CONFIG_FILE_PATH, file_string)?;
 
-    // Checking out default branch
-    Git::checkout(&Branch::Develop(default_branch_name), false);
+    // FIXME: Do we need to checkout?
+    match Git::checkout(&Branch::Develop(default_branch_name), false) {
+        Ok(_) => {},
+        Err(e) => {
+            println!("[ERROR] {}", e);
+        }
+    }
     
     Ok(())
 

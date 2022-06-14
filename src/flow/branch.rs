@@ -83,6 +83,8 @@ pub enum Branch {
 
 impl Branch {
 
+    // FIXME: Should return an Option<Branch>!
+    // FIXME: With the Option<Branch>, we don't need the unwrap. We return None
     pub fn from (branch_full_name: &str) -> Branch {
 
         let prefix = match branch_full_name.split("/").next() {
@@ -105,6 +107,7 @@ impl Branch {
             None => None,
         };
 
+        // FIXME: no unwrap
         return get_config_branch(prefix, name).unwrap();
        
     }
