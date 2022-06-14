@@ -1,6 +1,6 @@
 use crate::command::git::{Git, Gitable};
-use crate::command::runner::{Runner, Runnable};
-use crate::flow::branch::{Branch};
+use crate::command::runner::Runner;
+use crate::flow::branch::Branch;
 
 pub const FEATURE_BRANCH_NAME_KEY: &str = "FEATURE_BRANCH_NAME";
 pub const HOTFIX_BRANCH_NAME_KEY: &str = "HOTFIX_BRANCH_NAME";
@@ -178,13 +178,7 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         &names
     )?;
 
-    match Runner::run(&format!("git checkout -b {}", main_name)) {
-        Ok(_) => {},
-        Err(e) => {
-            eprintln!("{}", e);
-            return Err(Box::new(FileError::new(e)));
-        }
-    }
+    Git::checkout(&Branch::Main(main_name.clone()), true);
 
     match Runner::run(&format!("git push origin {}", main_name)) {
         Ok(_) => {},
@@ -217,14 +211,6 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    match Runner::run(&format!("git checkout {}", develop_name_to_checkout)) {
-        Ok(_) => {},
-        Err(e) => {
-            eprintln!("{}", e);
-            return Err(Box::new(FileError::new(e)));
-        }
-    }
-   
     // TODO: Check if the origin name may vary and configure it in the config file
     match Runner::run(&format!("git push origin {}", develop_name_to_push)) {
         Ok(_) => {},
@@ -238,14 +224,8 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
     std::fs::write(CONFIG_FILE_PATH, file_string)?;
 
     // Checking out default branch
-    match Runner::run(format!("git checkout {}", default_branch_name).as_str()) {
-        Ok(_) => {},
-        Err(e) => {
-            eprintln!("{}", e);
-            return Err(Box::new(FileError::new("Error checking out default branch".to_string())));
-        }
-    }
-
+    Git::checkout(&Branch::Develop(default_branch_name), false);
+    
     Ok(())
 
 }

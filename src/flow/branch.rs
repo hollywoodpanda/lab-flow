@@ -10,6 +10,65 @@ use crate::config::file::{
     BUGFIX_BRANCH_NAME_KEY,
 };
 
+fn get_config_branch (prefix: Option<String>, name: &str) -> Result<Branch, String> {
+    
+    let develop_name = match get_config_value(DEVELOP_BRANCH_NAME_KEY) {
+        Ok(develop_name) => develop_name,
+        Err(_) => return Err("Develop branch name not found".to_string())
+    };
+
+    let main_name = match get_config_value(MAIN_BRANCH_NAME_KEY) {
+        Ok(main_name) => main_name,
+        Err(_) => return Err("Main branch name not found".to_string())
+    };
+
+    let release_prefix = match get_config_value(RELEASE_BRANCH_NAME_KEY) {
+        Ok(release_prefix) => release_prefix,
+        Err(_) => return Err("Release branch prefix not found".to_string())
+    };
+
+    let feature_prefix = match get_config_value(FEATURE_BRANCH_NAME_KEY) {
+        Ok(feature_prefix) => feature_prefix,
+        Err(_) => return Err("Feature branch prefix not found".to_string())
+    };
+
+    let hotfix_prefix = match get_config_value(HOTFIX_BRANCH_NAME_KEY) {
+        Ok(hotfix_prefix) => hotfix_prefix,
+        Err(_) => return Err("Hotfix branch prefix not found".to_string())
+    };
+
+    let bugfix_prefix = match get_config_value(BUGFIX_BRANCH_NAME_KEY) {
+        Ok(bugfix_prefix) => bugfix_prefix,
+        Err(_) => return Err("Bugfix branch prefix not found".to_string())
+    };
+
+    match prefix {
+        Some(prefix) => {
+            if prefix == feature_prefix {
+                return Ok(Branch::Feature(name.to_string()));
+            } else if prefix == hotfix_prefix {
+                return Ok(Branch::Hotfix(name.to_string()));
+            } else if prefix == bugfix_prefix {
+                return Ok(Branch::Bugfix(name.to_string()));
+            } else if prefix == release_prefix {
+                return Ok(Branch::Release(name.to_string()));
+            } else {
+                return Err(format!("Unknown branch prefix '{}'", prefix));
+            }
+        },
+        None => {
+            if name == develop_name {
+                return Ok(Branch::Develop(name.to_string()));
+            } else if name == main_name {
+                return Ok(Branch::Main(name.to_string()));
+            } else {
+                return Err(format!("Unknown branch name {}", name));
+            }
+        }
+    }
+
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Branch {
     Feature(String),
@@ -20,9 +79,79 @@ pub enum Branch {
     Main(String),
 }
 
+impl Branch {
+
+    pub fn from (branch_full_name: &str) -> Branch {
+
+        let prefix = match branch_full_name.split("/").next() {
+            Some(prefix) => Some(format!("{}/", prefix)),
+            None => None,
+        };
+        let name = match branch_full_name.split("/").last() {
+            Some(name) => name,
+            None => branch_full_name,
+        };
+
+        let prefix = match prefix {
+            Some(prefix) => {
+                if prefix.starts_with(name) {
+                    None
+                } else {
+                    Some(prefix)
+                }
+            },
+            None => None,
+        };
+
+        return get_config_branch(prefix, name).unwrap();
+       
+    }
+
+    pub fn name (&self) -> &str {
+        match self {
+            Branch::Feature(name) => name,
+            Branch::Hotfix(name) => name,
+            Branch::Bugfix(name) => name,
+            Branch::Release(name) => name,
+            Branch::Develop(name) => name,
+            Branch::Main(name) => name,
+        }
+    }
+
+    pub fn prefix (&self) -> Option<String> {
+        match self {
+            Branch::Feature(_) => {
+                match get_config_value(FEATURE_BRANCH_NAME_KEY) {
+                    Ok(prefix) => Some(prefix),
+                    Err(_) => None,
+                }
+            },
+            Branch::Hotfix(_) => {
+                match get_config_value(HOTFIX_BRANCH_NAME_KEY) {
+                    Ok(prefix) => Some(prefix),
+                    Err(_) => None,
+                }
+            },
+            Branch::Bugfix(_) => {
+                match get_config_value(BUGFIX_BRANCH_NAME_KEY) {
+                    Ok(prefix) => Some(prefix),
+                    Err(_) => None,
+                }
+            },
+            Branch::Release(_) => {
+                match get_config_value(RELEASE_BRANCH_NAME_KEY) {
+                    Ok(prefix) => Some(prefix),
+                    Err(_) => None,
+                }
+            },
+            _ => None,
+        }
+    }
+
+}
+
 pub trait Sourceable {
     fn source (&self, released: bool) -> Result<Vec<Branch>, &str>;
-    fn prefix (&self) -> Result<String, &str>;
 }
 
 impl Display for Branch {
@@ -32,36 +161,6 @@ impl Display for Branch {
 }
 
 impl Sourceable for Branch {
-
-    fn prefix (&self) -> Result<String, &str> {
-        match self {
-            Branch::Feature(name) => {
-                match get_config_value(FEATURE_BRANCH_NAME_KEY) {
-                    Ok(prefix) => Ok(prefix),
-                    Err(_) => Err("Feature branch prefix not found in configuration file")
-                }
-            },
-            Branch::Hotfix(name) => {
-                match get_config_value(HOTFIX_BRANCH_NAME_KEY) {
-                    Ok(prefix) => Ok(prefix),
-                    Err(_) => Err("Hotfix branch prefix not found in configuration file")
-                }
-            },
-            Branch::Bugfix(name) => {
-                match get_config_value(BUGFIX_BRANCH_NAME_KEY) {
-                    Ok(prefix) => Ok(prefix),
-                    Err(_) => Err("Bugfix branch prefix not found in configuration file")
-                }
-            },
-            Branch::Release(name) => {
-                match get_config_value(RELEASE_BRANCH_NAME_KEY) {
-                    Ok(prefix) => Ok(prefix),
-                    Err(_) => Err("Release branch prefix not found in configuration file")
-                }
-            },
-            _ => Ok("".to_string()) //No prefix? No problem!
-        }
-    }
 
     fn source (&self, released: bool) -> Result<Vec<Branch>, &str> {
 

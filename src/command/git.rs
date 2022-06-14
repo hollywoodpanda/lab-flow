@@ -1,5 +1,5 @@
-use crate::flow::branch::{Branch, Sourceable, self};
-use crate::command::runner::{Runnable, Runner};
+use crate::flow::branch::{Branch, Sourceable};
+use crate::command::runner::{Runner};
 
 pub enum Git {}
 
@@ -12,6 +12,7 @@ pub trait Gitable {
     fn add (file_names: Vec<String>) -> Result<(), String>;
     fn init () -> Result<(), String>;
     fn status () -> Result<(), String>;
+    fn checkout (branch: &Branch, create: bool) -> Result<(), String>;
 }
 
 fn is_initiated_in_the_git_arts () -> bool {
@@ -28,6 +29,18 @@ fn is_initiated_in_the_git_arts () -> bool {
 }
 
 impl Gitable for Git {
+
+    fn checkout (branch: &Branch, create: bool) -> Result<(), String> {
+        let command = if create {
+            format!("git checkout -b {}", branch.name())
+        } else {
+            format!("git checkout {}", branch.name())
+        };
+        match Runner::run(&command) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(err)
+        }
+    }
 
     fn status () -> Result<(), String> {
         match Runner::run("git status") {
@@ -117,8 +130,8 @@ impl Gitable for Git {
         };
         // 3. Create target branch using the given name and prefix
         let prefix = match branch.prefix() {
-            Ok(prefix) => prefix,
-            Err(err) => return Err(err.to_string())
+            Some(prefix) => prefix,
+            None => "".to_string()
         };
 
         // 4. Figure out the branch name

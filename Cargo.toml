@@ -9,3 +9,4 @@ name = "git-lab"
 path = "src/main.rs"
 
 [dependencies]
+regex = "1.5.6"
