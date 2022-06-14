@@ -42,7 +42,9 @@ fn main() {
 
         println!("[DEBUG] Testing GitV2");
 
-        match GitV2::source(&Branch::Bugfix("AN_ISSUE".to_string())) {
+        let branch = Branch::Bugfix("AN_ISSUE".to_string());
+
+        match branch.source() {
             Ok(branches) => {
                 println!("[DEBUG] Source branches: {:?}", branches);
             },

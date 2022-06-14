@@ -1,11 +1,11 @@
-use crate::flow::branch::{Branch, Sourceable};
+use crate::flow::branch::{Branch};
 use crate::command::runner::{Runner};
 
 pub enum Git {}
 
 pub trait Gitable {
     fn create_branch (branch: Branch) -> Result<(), String>;
-    fn start_branch (branch: Branch, released: bool) -> Result<(), String>;
+    fn start_branch (branch: Branch) -> Result<(), String>;
     fn finish_branch (branch: Branch) -> Result<(), String>;
     fn publish_branch (branch: Branch) -> Result<(), String>;
     fn commit (message: String) -> Result<(), String>;
@@ -13,19 +13,6 @@ pub trait Gitable {
     fn init () -> Result<(), String>;
     fn status () -> Result<(), String>;
     fn checkout (branch: &Branch, create: bool) -> Result<(), String>;
-}
-
-fn is_initiated_in_the_git_arts () -> bool {
-    match Runner::run("git status") {
-        Ok(msg) => {
-            println!("Status ok, initiated in the git arts: {}", msg);
-            true
-        },
-        Err(err) => {
-            println!("Status error, not initiated in the git arts: {}", err);
-            false
-        }
-    }
 }
 
 impl Gitable for Git {
@@ -91,14 +78,7 @@ impl Gitable for Git {
     
     fn create_branch (branch: Branch) -> Result<(), String> {
         
-        let branch_name = match branch {
-            Branch::Feature(name) => name,
-            Branch::Hotfix(name) => name,
-            Branch::Bugfix(name) => name,
-            Branch::Release(name) => name,
-            Branch::Develop(name) => name,
-            Branch::Main(name) => name,
-        };
+        let branch_name = branch.name();
 
         let command = format!("git branch {}", branch_name);
         let result = Runner::run(&command);
@@ -110,15 +90,15 @@ impl Gitable for Git {
 
     }
 
-    fn start_branch (branch: Branch, released: bool) -> Result<(), String> {
+    fn start_branch (branch: Branch) -> Result<(), String> {
         // 1. Checkout source branch
-        let source_branch = match branch.source(released) {
-            Ok(source_branch) => source_branch,
-            Err(_) => return Err("Error getting source branch".to_string())
+        let source_branches = match branch.source() {
+            Ok(source_branches) => source_branches,
+            Err(_) => return Err("Error getting source branches".to_string())
         };
 
         // FIXME: Fragile code: using the first source branch!
-        match Runner::run(format!("git checkout {}", source_branch[0]).as_str()) {
+        match Runner::run(format!("git checkout {}", source_branches[0]).as_str()) {
             Ok(_) => {},
             Err(err) => return Err(err)
         };
@@ -135,14 +115,7 @@ impl Gitable for Git {
         };
 
         // 4. Figure out the branch name
-        let branch_name = match branch {
-            Branch::Feature(name) => name,
-            Branch::Hotfix(name) => name,
-            Branch::Bugfix(name) => name,
-            Branch::Release(name) => name,
-            Branch::Develop(name) => name,
-            Branch::Main(name) => name,
-        };
+        let branch_name = branch.name();
 
         // 5. Add the prefix to the name
         let branch_name = format!("{}{}", prefix, branch_name);

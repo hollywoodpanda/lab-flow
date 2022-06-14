@@ -10,6 +10,8 @@ use crate::config::file::{
     BUGFIX_BRANCH_NAME_KEY,
 };
 
+use crate::command::gitv2::GitV2;
+
 fn get_config_branch (prefix: Option<String>, name: &str) -> Result<Branch, String> {
     
     let develop_name = match get_config_value(DEVELOP_BRANCH_NAME_KEY) {
@@ -148,79 +150,72 @@ impl Branch {
         }
     }
 
+    pub fn source (&self) -> Result<Vec<Branch>, String> {
+        
+        let branch_name: String = String::from(self.name());
+        let branch_prefix = match self.prefix() {
+            Some(prefix) => prefix,
+            None => "".to_string(),
+        };
+         
+        // 1. Get the commits only on the branch
+        let branch_only_commits = match GitV2::exclusive_commits(&branch_prefix, &branch_name) {
+            Ok(commits) => commits,
+            Err(err) => {
+                println!("[ERROR] {}", err);
+                return Err(err);
+            },
+        };
+
+        // 2. Get the first 100 commits in the branch
+        let branch_commits = match GitV2::all_commits(&branch_prefix, &branch_name, 100) {
+            Ok(commits) => commits,
+            Err(err) => {
+                println!("[ERROR] {}", err);
+                return Err(err);
+            },
+        };
+
+        // 3. Get the first of all commits that differs from commits only in the current branch.
+        let first_commit_not_in_branch: String = match branch_commits
+            .iter()
+            .filter(|commit| !branch_only_commits.contains(commit))
+            .collect::<Vec<&String>>()
+            .first() {
+                Some(commit) => commit.to_string(),
+                None => String::from(&branch_commits[branch_commits.len() - 1]),
+            };
+            
+        // 4. Get all the commits on branch, stop at the first
+        // one not in the branch_commits. This commit contains
+        // the source branches!
+        let source_branches = match GitV2::source_branches(
+            &first_commit_not_in_branch, 
+            &branch_prefix, 
+            &branch_name
+        ) {
+            Ok(branches) => {
+                branches
+                    .iter()
+                    .map(|branch_name| Branch::from(branch_name))
+                    .collect()
+            },
+            Err(err) => {
+                println!("[ERROR] {}", err);
+                return Err(err);
+            },
+        };
+
+        Ok(source_branches)
+
+    }
+
 }
 
-pub trait Sourceable {
-    fn source (&self, released: bool) -> Result<Vec<Branch>, &str>;
-}
+
 
 impl Display for Branch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
-}
-
-impl Sourceable for Branch {
-
-    fn source (&self, released: bool) -> Result<Vec<Branch>, &str> {
-
-        let mut branches: Vec<Branch> = Vec::new();
-
-        let develop_name = match get_config_value(DEVELOP_BRANCH_NAME_KEY) {
-            Ok(develop_name) => develop_name,
-            Err(_) => return Err("Develop branch name not found")
-        };
-
-        let main_name = match get_config_value(MAIN_BRANCH_NAME_KEY) {
-            Ok(main_name) => main_name,
-            Err(_) => return Err("Main branch name not found")
-        };
-
-        let release_prefix = match get_config_value(RELEASE_BRANCH_NAME_KEY) {
-            Ok(release_prefix) => release_prefix,
-            Err(_) => return Err("Release branch prefix not found")
-        };
-
-        match self {
-
-            Branch::Feature(_) => {
-                branches.push(Branch::Develop(develop_name));
-                let branches = branches;
-                Ok(branches)
-            },
-
-            Branch::Hotfix(_) => {
-                branches.push(Branch::Main(main_name));
-                branches.push(Branch::Develop(develop_name));
-                let branches = branches;
-                Ok(branches)
-            },
-
-            Branch::Bugfix(_) => {
-
-                // FIXME: We don't have the suffix part of the branch name
-                // FIXME: Find out the higher "release/{VERSION}" branch and use its name as the suffix
-                // ... if using git lab, there'll be only one release branch
-                if released {
-                    branches.push(Branch::Release(release_prefix));
-                }
-
-                branches.push(Branch::Develop(develop_name));
-
-                let branches = branches;
-                Ok(branches)
-
-            },
-
-            Branch::Release(_) => {
-                branches.push(Branch::Main(main_name));
-                Ok(branches)
-            },
-
-            _ => Err("No source branch found")
-
-        }
-
-    }
-
 }
