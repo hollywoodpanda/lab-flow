@@ -11,7 +11,44 @@ TODO: Explain the project
     - [2.2. `git lab bugfix start [BRANCH_NAME] --release [RELEASE VERSION]`](#22-git-lab-bugfix-start-branch_name---release-release-version)
     - [2.3. `git lab bugfix finish [BRANCH_NAME]`](#23-git-lab-bugfix-finish-branch_name)
 
+```mermaid
+    stateDiagram-v2
+    state "develop" as d
+    state "feature/JIRA-1" as f
+    state "bugfix/JIRA-2" as b
+    state "hotfix/JIRA-3" as h
+    state "release/1.0.0" as r1
+    state "release/1.0.1" as r2
+    state "release/1.0.2" as r3
+    state "main" as m
+    state "Tag 1.0.0" as t1
+    state "Tag 1.0.1" as t2
+    state "Tag 1.0.2" as t3
+    
+    [*] --> m: O princípio é a main
+    m --> d: develop parte da main
+    d --> f: features partem da develop
+    f --> d: features vão para a develop
+    d --> r1: releases podem partir da develop
+    r1 --> d: releases vão para a develop
+    r1 --> m: releases vão para a main
+    m --> t1: tags nascem da main
+    t1 --> [*]: tags vão para produção
+
+    t1 --> h: hotfixes nascem de tags
+    h --> r2: hotfixes vão para releases
+    h --> d: hotfixes vão para a develop
+    r2 --> m: releases vão para a main
+    m --> t2: tags nascem da main
+    t2 --> [*]: tags vão para produção
+
+    
+
+
+```
 ## 1. Feature
+
+
 
 TODO: Explain what a feature is
 
