@@ -15,10 +15,14 @@ use config::file::{
 
 use config::error::{INIT_ERROR_CODE};
 
-use command::git::{Git, Gitable};
+use command::gitv2::{GitV2};
+
+use flow::branch::{Branch};
 
 fn main() {
+    println!("##############");
     println!("git lab plugin");
+    println!("##############\r\n");
     if !contains_config_file() {
         match create_config_file() {
             Ok(_) => {},
@@ -36,7 +40,18 @@ fn main() {
         println!("Hotfix branch: {}", get_config_value("HOTFIX_BRANCH_NAME").unwrap());
         println!("Feature branch: {}", get_config_value("FEATURE_BRANCH_NAME").unwrap());
 
-        //Starting a branch for testing...
+        println!("[DEBUG] Testing GitV2");
+
+        let branch = Branch::Bugfix("AN_ISSUE".to_string());
+
+        match branch.source() {
+            Ok(branches) => {
+                println!("[DEBUG] Source branches: {:?}", branches);
+            },
+            Err(e) => {
+                println!("[DEBUG] Error: {}", e);
+            }
+        }
 
 
     }

@@ -1,6 +1,6 @@
 use crate::command::git::{Git, Gitable};
-use crate::command::runner::{Runner, Runnable};
-use crate::flow::branch::{Branch};
+use crate::command::runner::Runner;
+use crate::flow::branch::Branch;
 
 pub const FEATURE_BRANCH_NAME_KEY: &str = "FEATURE_BRANCH_NAME";
 pub const HOTFIX_BRANCH_NAME_KEY: &str = "HOTFIX_BRANCH_NAME";
@@ -105,7 +105,6 @@ fn read_branch_name (
 
 }
 
-// TODO: Se nome para branch já foi informado, não podemos criar outra com o mesmo nome
 pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
 
     let mut names: Vec<String> = Vec::new();
@@ -167,8 +166,7 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
     
     let develop_name_to_create = develop_name.clone();
     let develop_name_to_push = develop_name.clone();
-    let default_branch_name = develop_name.clone();
-    let develop_name_to_checkout = develop_name_to_create.clone();    
+    let default_branch_name = develop_name.clone();  
     names.push(develop_name);
     
     let main_name = read_branch_name(
@@ -178,11 +176,11 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         &names
     )?;
 
-    match Runner::run(&format!("git checkout -b {}", main_name)) {
+    // TODO: Do we need to checkout?
+    match Git::checkout(&Branch::Main(main_name.clone()), true) {
         Ok(_) => {},
         Err(e) => {
-            eprintln!("{}", e);
-            return Err(Box::new(FileError::new(e)));
+            println!("[ERROR] {}", e);
         }
     }
 
@@ -217,14 +215,6 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    match Runner::run(&format!("git checkout {}", develop_name_to_checkout)) {
-        Ok(_) => {},
-        Err(e) => {
-            eprintln!("{}", e);
-            return Err(Box::new(FileError::new(e)));
-        }
-    }
-   
     // TODO: Check if the origin name may vary and configure it in the config file
     match Runner::run(&format!("git push origin {}", develop_name_to_push)) {
         Ok(_) => {},
@@ -237,15 +227,14 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
 
     std::fs::write(CONFIG_FILE_PATH, file_string)?;
 
-    // Checking out default branch
-    match Runner::run(format!("git checkout {}", default_branch_name).as_str()) {
+    // FIXME: Do we need to checkout?
+    match Git::checkout(&Branch::Develop(default_branch_name), false) {
         Ok(_) => {},
         Err(e) => {
-            eprintln!("{}", e);
-            return Err(Box::new(FileError::new("Error checking out default branch".to_string())));
+            println!("[ERROR] {}", e);
         }
     }
-
+    
     Ok(())
 
 }

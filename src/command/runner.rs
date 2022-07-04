@@ -1,12 +1,6 @@
 use std::process::{Command, Output};
 use std::env;
 
-pub trait Runnable {
-
-    fn run (command: &str) -> Result<String, String>;
-
-}
-
 pub trait Browseable {
 
     fn open (url: &str);
@@ -17,52 +11,9 @@ pub enum Runner {}
 
 pub enum Browser {}
 
-impl Runnable for Runner {
+impl Runner {
 
-    fn run (command: &str) -> Result<String, String> {
-
-        println!("{}", command);
-
-        let command_result: Result<Output, std::io::Error> = if cfg!(target_os = "windows") {
-            run_for_windows(command)
-        } else {
-            run_for_nix(command)
-        };
-
-        match command_result {
-
-            Ok(output) => {
-
-                // FIXME: Aceitar outros encodings
-                match String::from_utf8(output.stdout) {
-
-                    Ok(stdout) => Ok(stdout),
-
-                    Err(stderr) => {
-                        let stderr_message = format!("{:?}", stderr.utf8_error());
-                        println!("{}", stderr_message);
-                        Err(stderr_message)
-                    }
-
-                }
-
-            },
-
-            Err(command_error) => {
-                let error_message = format!("{:?}", command_error);
-                println!("{}", error_message);
-                return Err(error_message);
-            }
-
-        }
-
-    }
-
-}
-
-impl Browseable for Browser {
-
-    fn open (url: &str) {
+    pub fn open (url: &str) -> Result<String, String> {
 
         let os_command: String;
 
@@ -82,7 +33,38 @@ impl Browseable for Browser {
 
         }
 
-        Runner::run(os_command.as_str()).ok();
+        Runner::run(os_command.as_str())
+
+    }
+
+    pub fn run (command: &str) -> Result<String, String> {
+
+        println!("{}", command);
+
+        let command_result: Result<Output, std::io::Error> = if cfg!(target_os = "windows") {
+            run_for_windows(command)
+        } else {
+            run_for_nix(command)
+        };
+
+        match command_result {
+
+            Ok(output) => {
+
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let stderr = String::from_utf8_lossy(&output.stderr);
+
+                if stderr.len() > 0 {
+                    Err(stderr.to_string())
+                } else {
+                    Ok(stdout.to_string())
+                }
+
+            },
+
+            Err(command_error) => Err(format!("{:?}", command_error))
+
+        }
 
     }
 
@@ -103,14 +85,17 @@ fn run_for_windows (command: &str) -> Result<Output, std::io::Error> {
 }
 
 fn run_for_nix (command: &str) -> Result<Output, std::io::Error> {
+
     match Command::new("sh")
             .args(["-c", command])
             .output() {
 
-        Ok(res) => Ok(res),
+        Ok(res) => {
+            Ok(res)
+        },
 
         Err(sh_error) => Err(sh_error)
 
     }
-    
+        
 }
