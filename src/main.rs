@@ -5,6 +5,9 @@ mod config;
 mod flow;
 
 use std::process;
+use std::env;
+
+use config::parameter::Interpreter;
 
 use config::file::{
     create_config_file,
@@ -20,10 +23,20 @@ use command::gitv2::{GitV2};
 use flow::branch::{Branch};
 
 fn main() {
+
     println!("##############");
     println!("git lab plugin");
     println!("##############\r\n");
+
+    let parameter = Interpreter::get_parameter(env::args().collect());
+
+    match parameter {
+        Some(parameter) => println!("The parameter: {:?}", parameter),
+        None => eprintln!("No parameter given")
+    }
+
     if !contains_config_file() {
+
         match create_config_file() {
             Ok(_) => {},
             Err(e) => {
@@ -31,7 +44,9 @@ fn main() {
                 process::exit(INIT_ERROR_CODE);
             }
         }
+
     } else {
+
         println!("{}", "Configuration file \".git/lab.conf\" already exists");
         println!("Main branch: {}", get_config_value(MAIN_BRANCH_NAME_KEY).unwrap());
         println!("Develop branch: {}", get_config_value("DEVELOP_BRANCH_NAME").unwrap());

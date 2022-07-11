@@ -30,6 +30,24 @@ impl GitV2 {
 
     }
 
+    pub fn add (files: Vec<String>) -> Result<String, String> {
+
+        Runner::run(&format!("git add {}", files.join(" ")))
+
+    }
+
+    pub fn commit (message: &str, allow_empty: bool) -> Result<String, String> {
+
+        let command = if allow_empty {
+            format!("git commit -m \"{}\" --allow-empty", message)
+        } else {
+            format!("git commit -m \"{}\"", message)
+        };
+
+        Runner::run(&command)
+
+    }
+
     pub fn checkout (branch_prefix: Option<&str>, branch_name: &str, create: bool) -> Result<String, String> {
 
         let branch_prefix = match branch_prefix {
@@ -60,7 +78,20 @@ impl GitV2 {
 
     }
 
-    pub fn exclusive_commits (branch_prefix: &str, branch_name: &str) -> Result<Vec<String>, String> {
+    pub fn push (branch_prefix: Option<&str>, branch_name: &str, origin_name: &str) -> Result<String, String> {
+
+        let branch_prefix = match branch_prefix {
+            Some(name) => name,
+            None => ""
+        };
+
+        let branch_name = format!("{}{}", branch_prefix, branch_name);
+
+        Runner::run(&format!("git push {} {}", origin_name, branch_name))
+
+    }
+
+    pub fn get_exclusive_commits (branch_prefix: &str, branch_name: &str) -> Result<Vec<String>, String> {
 
         let branch_full_name = format!("{}{}", branch_prefix, branch_name);
         
@@ -97,7 +128,7 @@ impl GitV2 {
     
     }
     
-    pub fn all_commits (branch_prefix: &str, branch_name: &str, limit: u8) -> Result<Vec<String>, String> {
+    pub fn get_all_commits (branch_prefix: &str, branch_name: &str, limit: u8) -> Result<Vec<String>, String> {
         let branch_full_name = format!("{}{}", branch_prefix, branch_name);
         let command = format!(
             "git log {} -n {} --pretty=oneline", 
@@ -131,7 +162,7 @@ impl GitV2 {
         )
     }
     
-    pub fn source_branches (commit: &str, branch_prefix: &str, branch_name: &str) -> Result<Vec<String>, String> {
+    pub fn get_source_branches (commit: &str, branch_prefix: &str, branch_name: &str) -> Result<Vec<String>, String> {
         match Runner::run(&format!("git branch -a --contains {}", commit)) {
             Ok(output) => {
                 Ok(

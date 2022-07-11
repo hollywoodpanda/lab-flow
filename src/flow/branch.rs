@@ -162,7 +162,7 @@ impl Branch {
         };
          
         // 1. Get the commits only on the branch
-        let branch_only_commits = match GitV2::exclusive_commits(&branch_prefix, &branch_name) {
+        let branch_only_commits = match GitV2::get_exclusive_commits(&branch_prefix, &branch_name) {
             Ok(commits) => commits,
             Err(err) => {
                 println!("[ERROR] {}", err);
@@ -171,7 +171,7 @@ impl Branch {
         };
 
         // 2. Get the first 100 commits in the branch
-        let branch_commits = match GitV2::all_commits(&branch_prefix, &branch_name, 100) {
+        let branch_commits = match GitV2::get_all_commits(&branch_prefix, &branch_name, 100) {
             Ok(commits) => commits,
             Err(err) => {
                 println!("[ERROR] {}", err);
@@ -192,7 +192,7 @@ impl Branch {
         // 4. Get all the commits on branch, stop at the first
         // one not in the branch_commits. This commit contains
         // the source branches!
-        let source_branches = match GitV2::source_branches(
+        let source_branches = match GitV2::get_source_branches(
             &first_commit_not_in_branch, 
             &branch_prefix, 
             &branch_name
