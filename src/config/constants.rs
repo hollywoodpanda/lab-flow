@@ -1,0 +1,1 @@
+pub const BRANCH_ALREADY_EXISTS_SUFFIX: &str = "already exists";
