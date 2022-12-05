@@ -30,6 +30,22 @@ impl GitV2 {
 
     }
 
+    pub fn add (file_names: Vec<String>) -> Result<String, String> {
+        match Runner::run(&format!("git add {}", file_names.join(" "))) {
+            Ok(output) => Ok(output),
+            Err(e) => Err(e)
+        }
+    }
+
+    pub fn commit (message: String) -> Result<String, String> {
+
+        match Runner::run(&format!("git commit -m \"{}\"", message)) {
+            Ok(output) => Ok(output),
+            Err(e) => Err(e)
+        }
+
+    }
+
     pub fn checkout (branch_prefix: Option<&str>, branch_name: &str, create: bool) -> Result<String, String> {
 
         let branch_prefix = match branch_prefix {

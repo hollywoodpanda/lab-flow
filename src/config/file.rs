@@ -1,6 +1,5 @@
-use crate::command::git::{Git, Gitable};
+use crate::command::gitv2::{GitV2};
 use crate::command::runner::Runner;
-use crate::flow::branch::Branch;
 
 use crate::config::constants::{BRANCH_ALREADY_EXISTS_SUFFIX};
 
@@ -38,6 +37,10 @@ impl std::fmt::Display for FileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
+}
+
+fn does_branch_already_exists (error_message: &str) -> bool {
+    error_message.contains(BRANCH_ALREADY_EXISTS_SUFFIX)
 }
 
 fn read_config_file () -> Result<String, Box<dyn std::error::Error>> {
@@ -112,7 +115,7 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
     let mut names: Vec<String> = Vec::new();
     let mut file_string: String;
     
-    match Git::init() {
+    match GitV2::init() {
         Ok(_) => {},
         Err(e) => return Err(Box::new(FileError::new(e)))
     }
@@ -179,13 +182,25 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // TODO: Do we need to checkout?
-    match Git::checkout(&Branch::Main(main_name.clone()), true) {
+    match GitV2::checkout(Option::None, &main_name, true) {
         Ok(_) => {},
         Err(e) => {
-            println!("[ERROR] {}", e);
+
+            if does_branch_already_exists(&e) {
+                match GitV2::checkout(Option::None, &main_name, false) {
+                    Ok(_) => {},
+                    Err(e) => {
+                        println!("[ERROR] Error checking out the main branch: {}", e);
+                        return Err(Box::new(FileError::new(e)));
+                    }
+                }
+            }
+
         }
     }
 
+    // TODO: Create and use GitV2::push(...)
+    // TODO: Check if the origin name may vary and configure it in the config file
     match Runner::run(&format!("git push origin {}", main_name)) {
         Ok(_) => {},
         Err(e) => {
@@ -193,13 +208,12 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    match Git::add(vec![".".to_string()]) {
+    match GitV2::add(vec![".".to_string()]) {
         Ok(_) => {
-            match Git::commit("Initial commit".to_string()) {
+            match GitV2::commit("Initial commit".to_string()) {
                 Ok(_) => {},
                 Err(err) => {
-                    eprintln!("{}", err);
-                    return Err(Box::new(FileError::new(err)));
+                    eprintln!("Failed to create an initial commit. It may be there is nothing to commit 🤷‍♂️ {}", err);
                 }
             }
         },
@@ -209,19 +223,17 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    match Git::create_branch(Branch::Develop(develop_name_to_create)) {
+    match GitV2::branch(Option::None, &develop_name_to_create) {
         Ok(_) => {},
         Err(e) => {
-            
+
             let error_message: String = format!("{}", e);
 
             eprintln!("{}", error_message);
 
-            if ! error_message.contains(BRANCH_ALREADY_EXISTS_SUFFIX) {
+            if ! does_branch_already_exists(&error_message) {
                 return Err(Box::new(FileError::new("Error creating develop branch".to_string())));
             }
-
-            println!("Branch already exists.");
 
             //  Ignoring error if the branch already exists.
             {}
@@ -229,6 +241,7 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // TODO: Create and use GitV2::push(...)
     // TODO: Check if the origin name may vary and configure it in the config file
     match Runner::run(&format!("git push origin {}", develop_name_to_push)) {
         Ok(_) => {},
@@ -241,14 +254,13 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
 
     std::fs::write(CONFIG_FILE_PATH, file_string)?;
 
-    // FIXME: Do we need to checkout?
-    match Git::checkout(&Branch::Develop(default_branch_name), false) {
+    match GitV2::checkout(Option::None, &default_branch_name, false) {
         Ok(_) => {},
         Err(e) => {
-            println!("[ERROR] {}", e);
+            println!("Couldn't checkout the developing branch. {}", e);
         }
     }
-    
+
     Ok(())
 
 }
