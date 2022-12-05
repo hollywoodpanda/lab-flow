@@ -2,6 +2,8 @@ use crate::command::git::{Git, Gitable};
 use crate::command::runner::Runner;
 use crate::flow::branch::Branch;
 
+use crate::config::constants::{BRANCH_ALREADY_EXISTS_SUFFIX};
+
 pub const FEATURE_BRANCH_NAME_KEY: &str = "FEATURE_BRANCH_NAME";
 pub const HOTFIX_BRANCH_NAME_KEY: &str = "HOTFIX_BRANCH_NAME";
 pub const BUGFIX_BRANCH_NAME_KEY: &str = "BUGFIX_BRANCH_NAME";
@@ -210,8 +212,20 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
     match Git::create_branch(Branch::Develop(develop_name_to_create)) {
         Ok(_) => {},
         Err(e) => {
-            eprintln!("{}", e);
-            return Err(Box::new(FileError::new("Error creating develop branch".to_string())));
+            
+            let error_message: String = format!("{}", e);
+
+            eprintln!("{}", error_message);
+
+            if ! error_message.contains(BRANCH_ALREADY_EXISTS_SUFFIX) {
+                return Err(Box::new(FileError::new("Error creating develop branch".to_string())));
+            }
+
+            println!("Branch already exists.");
+
+            //  Ignoring error if the branch already exists.
+            {}
+
         }
     }
 
