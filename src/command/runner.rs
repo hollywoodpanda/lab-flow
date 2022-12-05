@@ -51,13 +51,10 @@ impl Runner {
 
             Ok(output) => {
 
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stderr = String::from_utf8_lossy(&output.stderr);
-
-                if stderr.len() > 0 {
-                    Err(stderr.to_string())
+                if output.status.success() {
+                    Ok(String::from_utf8_lossy(&output.stdout).to_string())
                 } else {
-                    Ok(stdout.to_string())
+                    Err(String::from_utf8_lossy(&output.stderr).to_string())
                 }
 
             },
