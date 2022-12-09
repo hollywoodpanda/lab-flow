@@ -1,5 +1,4 @@
 use crate::command::gitv2::{GitV2};
-use crate::command::runner::Runner;
 
 use crate::config::constants::{BRANCH_ALREADY_EXISTS_SUFFIX};
 
@@ -12,12 +11,20 @@ pub const MAIN_BRANCH_NAME_KEY: &str = "MAIN_BRANCH_NAME";
 
 pub const CONFIG_FILE_PATH: &str = ".git/lab.conf";
 
+///
+/// The Configuration struct, containing the key 
+/// and value of a configuration.
+/// 
 pub struct Configuration<'a> {
 
     key: &'a str,
     value: &'a str
 
 }
+
+///
+/// The FileError struct, containing the error message.
+/// 
 #[derive(Debug)]
 pub struct FileError {
     message: String
@@ -25,6 +32,9 @@ pub struct FileError {
 
 impl std::error::Error for FileError {}
 
+///
+/// The implementation of FileError.
+/// 
 impl FileError {
     fn new(message: String) -> FileError {
         FileError {
@@ -33,16 +43,26 @@ impl FileError {
     }
 }
 
+///
+/// Allowing the FileError to be displayed.
+/// 
 impl std::fmt::Display for FileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
+///
+/// Checks if the given error message contains the suffix that indicates 
+/// that the branch already exists.
+/// 
 fn does_branch_already_exists (error_message: &str) -> bool {
     error_message.contains(BRANCH_ALREADY_EXISTS_SUFFIX)
 }
 
+///
+/// Reads the configuration file as a string.
+/// 
 fn read_config_file () -> Result<String, Box<dyn std::error::Error>> {
 
     let file_string = std::fs::read_to_string(CONFIG_FILE_PATH)?;
@@ -51,6 +71,9 @@ fn read_config_file () -> Result<String, Box<dyn std::error::Error>> {
 
 }
 
+///
+/// Parses the configuration file and returns a vector of Configuration objects.
+/// 
 fn parse_config_file (file_string: &str) -> Result<Vec<Configuration>, Box<dyn std::error::Error>> {
 
     let mut config_vec: Vec<Configuration> = Vec::new();
@@ -70,6 +93,10 @@ fn parse_config_file (file_string: &str) -> Result<Vec<Configuration>, Box<dyn s
 
 }
 
+///
+/// Reads a line from the standard input, checks if the branch name is already used and, if not,
+/// returns the branch name. It may include a slash (or not) at the end of the branch name.
+/// 
 fn read_branch_name (
     message: &str, 
     default_name: &str,
@@ -110,6 +137,9 @@ fn read_branch_name (
 
 }
 
+///
+/// Creates the lab-flow configuration file for the project.
+/// 
 pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
 
     let mut names: Vec<String> = Vec::new();
@@ -167,12 +197,10 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         &names
     )?;
 
-    file_string = file_string + &format!("{}={}\n", DEVELOP_BRANCH_NAME_KEY, develop_name);
-    
-    let develop_name_to_create = develop_name.clone();
-    let develop_name_to_push = develop_name.clone();
-    let default_branch_name = develop_name.clone();  
-    names.push(develop_name);
+    file_string = file_string + &format!("{}={}\n", DEVELOP_BRANCH_NAME_KEY, &develop_name);
+
+    // Clone is needed. We need to keep using develop_name
+    names.push(develop_name.clone());
     
     let main_name = read_branch_name(
         "Enter the name of the main branch (main):",
@@ -181,7 +209,6 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         &names
     )?;
 
-    // TODO: Do we need to checkout?
     match GitV2::checkout(Option::None, &main_name, true) {
         Ok(_) => {},
         Err(e) => {
@@ -190,8 +217,9 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
                 match GitV2::checkout(Option::None, &main_name, false) {
                     Ok(_) => {},
                     Err(e) => {
-                        println!("[ERROR] Error checking out the main branch: {}", e);
-                        return Err(Box::new(FileError::new(e)));
+                        let error_message = format!("Error checking out the main branch: {}", e);
+                        println!("{}", &error_message);
+                        return Err(Box::new(FileError::new(error_message)));
                     }
                 }
             }
@@ -199,12 +227,10 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // TODO: Create and use GitV2::push(...)
-    // TODO: Check if the origin name may vary and configure it in the config file
-    match Runner::run(&format!("git push origin {}", main_name)) {
+    match GitV2::push(&main_name) {
         Ok(_) => {},
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("Error pushing to the remote repository: {}", e);
         }
     }
 
@@ -218,21 +244,21 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
             }
         },
         Err(err) => {
-            eprintln!("{}", err);
+            eprintln!("Error adding files for the initial commit: {}", err);
             return Err(Box::new(FileError::new(err)));
         }
     }
 
-    match GitV2::branch(Option::None, &develop_name_to_create) {
+    match GitV2::branch(Option::None, &develop_name) {
         Ok(_) => {},
         Err(e) => {
 
-            let error_message: String = format!("{}", e);
+            let error_message: String = format!("Error creating the \"develop\" branch: {}", e);
 
-            eprintln!("{}", error_message);
+            eprintln!("{}", &error_message);
 
             if ! does_branch_already_exists(&error_message) {
-                return Err(Box::new(FileError::new("Error creating develop branch".to_string())));
+                return Err(Box::new(FileError::new(format!("{}", &error_message))));
             }
 
             //  Ignoring error if the branch already exists.
@@ -241,23 +267,26 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // TODO: Create and use GitV2::push(...)
-    // TODO: Check if the origin name may vary and configure it in the config file
-    match Runner::run(&format!("git push origin {}", develop_name_to_push)) {
+    match GitV2::push(&develop_name) {
         Ok(_) => {},
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("Error pushing to the remote repository: {}", e);
         }
     }
 
     file_string = file_string + &format!("{}={}\n", MAIN_BRANCH_NAME_KEY, main_name);
 
-    std::fs::write(CONFIG_FILE_PATH, file_string)?;
-
-    match GitV2::checkout(Option::None, &default_branch_name, false) {
+    match std::fs::write(CONFIG_FILE_PATH, file_string) {
         Ok(_) => {},
         Err(e) => {
-            println!("Couldn't checkout the developing branch. {}", e);
+            return Err(Box::new(FileError::new(format!("Error writing the configuration file: {}", e))));
+        }
+    }
+
+    match GitV2::checkout(Option::None, &develop_name, false) {
+        Ok(_) => {},
+        Err(e) => {
+            println!("Couldn't checkout the \"develop\" branch. {}", e);
         }
     }
 
@@ -265,6 +294,10 @@ pub fn create_config_file () -> Result<(), Box<dyn std::error::Error>> {
 
 }
 
+///
+/// Reads the configuration file and returns the configuration identified by the key, if found.
+/// Otherwise returns an error.
+/// 
 pub fn get_config_value (key: &str) -> Result<String, Box<dyn std::error::Error>> {
 
     let file_string = read_config_file()?;
@@ -283,6 +316,9 @@ pub fn get_config_value (key: &str) -> Result<String, Box<dyn std::error::Error>
 
 }
 
+///
+/// Checks if the configuration file exists.
+/// 
 pub fn contains_config_file () -> bool {
 
     std::path::Path::new(CONFIG_FILE_PATH).exists()

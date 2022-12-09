@@ -204,7 +204,7 @@ impl Branch {
                     .collect()
             },
             Err(err) => {
-                println!("[ERROR] {}", err);
+                println!("Error fetching the source branches: {}", err);
                 return Err(err);
             },
         };
