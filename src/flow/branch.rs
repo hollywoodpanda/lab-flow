@@ -1,45 +1,46 @@
 use std::fmt::Display;
 
-use crate::config::file::{
-    get_config_value, 
-    DEVELOP_BRANCH_NAME_KEY, 
-    MAIN_BRANCH_NAME_KEY, 
-    RELEASE_BRANCH_NAME_KEY, 
+use crate::flow::init::{
     FEATURE_BRANCH_NAME_KEY,
-    HOTFIX_BRANCH_NAME_KEY,
     BUGFIX_BRANCH_NAME_KEY,
+    HOTFIX_BRANCH_NAME_KEY,
+    RELEASE_BRANCH_NAME_KEY,
+    DEVELOP_BRANCH_NAME_KEY,
+    MAIN_BRANCH_NAME_KEY,
 };
+
+use crate::config::store::{Store};
 
 use crate::command::gitv2::GitV2;
 
 fn get_config_branch (prefix: Option<String>, name: &str) -> Result<Branch, String> {
     
-    let develop_name = match get_config_value(DEVELOP_BRANCH_NAME_KEY) {
+    let develop_name = match Store::get(DEVELOP_BRANCH_NAME_KEY) {
         Ok(develop_name) => develop_name,
         Err(_) => return Err("Develop branch name not found".to_string())
     };
 
-    let main_name = match get_config_value(MAIN_BRANCH_NAME_KEY) {
+    let main_name = match Store::get(MAIN_BRANCH_NAME_KEY) {
         Ok(main_name) => main_name,
         Err(_) => return Err("Main branch name not found".to_string())
     };
 
-    let release_prefix = match get_config_value(RELEASE_BRANCH_NAME_KEY) {
+    let release_prefix = match Store::get(RELEASE_BRANCH_NAME_KEY) {
         Ok(release_prefix) => release_prefix,
         Err(_) => return Err("Release branch prefix not found".to_string())
     };
 
-    let feature_prefix = match get_config_value(FEATURE_BRANCH_NAME_KEY) {
+    let feature_prefix = match Store::get(FEATURE_BRANCH_NAME_KEY) {
         Ok(feature_prefix) => feature_prefix,
         Err(_) => return Err("Feature branch prefix not found".to_string())
     };
 
-    let hotfix_prefix = match get_config_value(HOTFIX_BRANCH_NAME_KEY) {
+    let hotfix_prefix = match Store::get(HOTFIX_BRANCH_NAME_KEY) {
         Ok(hotfix_prefix) => hotfix_prefix,
         Err(_) => return Err("Hotfix branch prefix not found".to_string())
     };
 
-    let bugfix_prefix = match get_config_value(BUGFIX_BRANCH_NAME_KEY) {
+    let bugfix_prefix = match Store::get(BUGFIX_BRANCH_NAME_KEY) {
         Ok(bugfix_prefix) => bugfix_prefix,
         Err(_) => return Err("Bugfix branch prefix not found".to_string())
     };
@@ -126,25 +127,25 @@ impl Branch {
     pub fn prefix (&self) -> Option<String> {
         match self {
             Branch::Feature(_) => {
-                match get_config_value(FEATURE_BRANCH_NAME_KEY) {
+                match Store::get(FEATURE_BRANCH_NAME_KEY) {
                     Ok(prefix) => Some(prefix),
                     Err(_) => None,
                 }
             },
             Branch::Hotfix(_) => {
-                match get_config_value(HOTFIX_BRANCH_NAME_KEY) {
+                match Store::get(HOTFIX_BRANCH_NAME_KEY) {
                     Ok(prefix) => Some(prefix),
                     Err(_) => None,
                 }
             },
             Branch::Bugfix(_) => {
-                match get_config_value(BUGFIX_BRANCH_NAME_KEY) {
+                match Store::get(BUGFIX_BRANCH_NAME_KEY) {
                     Ok(prefix) => Some(prefix),
                     Err(_) => None,
                 }
             },
             Branch::Release(_) => {
-                match get_config_value(RELEASE_BRANCH_NAME_KEY) {
+                match Store::get(RELEASE_BRANCH_NAME_KEY) {
                     Ok(prefix) => Some(prefix),
                     Err(_) => None,
                 }
