@@ -1,6 +1,11 @@
 use regex::Regex;
 use crate::command::runner::{Runner};
 
+/**
+ * git-flow vs git (Very cool comparison)
+ * https://gist.github.com/JamesMGreene/cdd0ac49f90c987e45ac
+ */
+
 ///
 /// GitV2 is a wrapper around the git command line tool.
 /// It provides a set of functions that can be used to
@@ -22,7 +27,8 @@ impl GitV2 {
 
     ///
     /// Retrieve changes from the remote repository
-    /// 
+    ///
+    #[allow(dead_code)]
     pub fn pull (branch_name: &str) -> Result<String, String> {
         Runner::run(&format!("git pull origin {}", branch_name))
     }
