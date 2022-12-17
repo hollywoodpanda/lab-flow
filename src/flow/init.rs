@@ -304,7 +304,7 @@ fn read_branch_name (
         }
 
         // 7. If the user entered a branch name that is already taken, we keep asking for a new one.
-        if already_used_names.contains(&branch_name) {
+        if already_used_names.contains(&branch_name) || ! add_suffix_slash && already_used_names.contains(&format!("{}/", &branch_name)) {
             println!("The branch name '{}' is already taken. Please enter a new one.", branch_name);
             branch_name = String::new();
             continue;
