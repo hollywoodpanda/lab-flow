@@ -291,31 +291,30 @@ fn read_branch_name (
             branch_name = default_branch_name.to_string();
         }
 
-        // 5. If the user entered a branch name that is already taken, we keep asking for a new one.
+        // 5. If the user entered a branch name that is already 
+        // taken, we keep asking for a new one.
+        if add_suffix_slash && !branch_name.ends_with("/") {
+            branch_name = branch_name + "/";
+        }
+
+        // 6. Removing the trailing slash if the user entered one
+        // as we shouldn't accept it.
+        if !add_suffix_slash && branch_name.ends_with("/") {
+            branch_name = branch_name.trim_end_matches("/").to_string();
+        }
+
+        // 7. If the user entered a branch name that is already taken, we keep asking for a new one.
         if already_used_names.contains(&branch_name) {
             println!("The branch name '{}' is already taken. Please enter a new one.", branch_name);
             branch_name = String::new();
             continue;
         }
 
-        // 6. Validating if the given name is acceptable.
+        // 8. Validating if the given name is acceptable.
         if ! is_given_branch_name_valid(&branch_name) {
             println!("The branch name '{}' is not valid. Please enter a new one.", branch_name);
             branch_name = String::new();
             continue;
-        }
-
-
-        // 7. If the user entered a branch name that is already 
-        // taken, we keep asking for a new one.
-        if add_suffix_slash && !branch_name.ends_with("/") {
-            branch_name = branch_name + "/";
-        }
-
-        // 8. Removing the trailing slash if the user entered one
-        // and we shouldn't accept it.
-        if !add_suffix_slash && branch_name.ends_with("/") {
-            branch_name = branch_name.trim_end_matches("/").to_string();
         }
 
         // 9. If we got here it means we have a valid 
