@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::flow::init::{
+use crate::config::constants::{
     FEATURE_BRANCH_NAME_KEY,
     BUGFIX_BRANCH_NAME_KEY,
     HOTFIX_BRANCH_NAME_KEY,
@@ -157,13 +157,22 @@ impl Branch {
     pub fn source (&self) -> Result<Vec<Branch>, String> {
         
         let branch_name: String = String::from(self.name());
+
+        // Lives in memory while the function is running (?).
+        let mut inner_prefix = String::from("");
+
+        // exclusive_commits(...) uses Option<&str> and we have
+        // Option<String>. This, below, is the necessary conversion.
         let branch_prefix = match self.prefix() {
-            Some(prefix) => prefix,
-            None => "".to_string(),
+            Some(prefix) => {
+                inner_prefix = prefix.clone();
+                Some(inner_prefix.as_str())
+            },
+            None => None,
         };
          
         // 1. Get the commits only on the branch
-        let branch_only_commits = match GitV2::exclusive_commits(&branch_prefix, &branch_name) {
+        let branch_only_commits = match GitV2::exclusive_commits(branch_prefix, &branch_name) {
             Ok(commits) => commits,
             Err(err) => {
                 println!("[ERROR] {}", err);
@@ -172,7 +181,7 @@ impl Branch {
         };
 
         // 2. Get the first 100 commits in the branch
-        let branch_commits = match GitV2::all_commits(&branch_prefix, &branch_name, 100) {
+        let branch_commits = match GitV2::all_commits(branch_prefix, &branch_name, 100) {
             Ok(commits) => commits,
             Err(err) => {
                 println!("[ERROR] {}", err);
@@ -189,13 +198,18 @@ impl Branch {
                 Some(commit) => commit.to_string(),
                 None => String::from(&branch_commits[branch_commits.len() - 1]),
             };
-            
+         
         // 4. Get all the commits on branch, stop at the first
         // one not in the branch_commits. This commit contains
         // the source branches!
+        let branch_prefix: &str = match branch_prefix {
+            Some(prefix) => prefix,
+            None => "",
+        };    
+
         let source_branches = match GitV2::source_branches(
             &first_commit_not_in_branch, 
-            &branch_prefix, 
+            branch_prefix, 
             &branch_name
         ) {
             Ok(branches) => {

@@ -127,7 +127,12 @@ impl GitV2 {
     /// Returns a list of commits that are only in the branch
     /// FIXME: Using unwrap! 😱
     /// 
-    pub fn exclusive_commits (branch_prefix: &str, branch_name: &str) -> Result<Vec<String>, String> {
+    pub fn exclusive_commits (branch_prefix: Option<&str>, branch_name: &str) -> Result<Vec<String>, String> {
+
+        let branch_prefix =match branch_prefix {
+            Some(prefix) => prefix,
+            None => "",
+        };
 
         let branch_full_name = format!("{}{}", branch_prefix, branch_name);
         
@@ -167,8 +172,15 @@ impl GitV2 {
     ///
     /// Returns a list of commits that are in the branch using the given limit
     /// 
-    pub fn all_commits (branch_prefix: &str, branch_name: &str, limit: u8) -> Result<Vec<String>, String> {
+    pub fn all_commits (branch_prefix: Option<&str>, branch_name: &str, limit: u8) -> Result<Vec<String>, String> {
+        
+        let branch_prefix = match branch_prefix {
+            Some(prefix) => prefix,
+            None => "",
+        };
+        
         let branch_full_name = format!("{}{}", branch_prefix, branch_name);
+        
         let command = format!(
             "git log {} -n {} --pretty=oneline", 
             branch_full_name, 
