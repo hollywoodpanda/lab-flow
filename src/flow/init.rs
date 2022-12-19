@@ -3,12 +3,14 @@ use crate::config::constants::BRANCH_ALREADY_EXISTS_SUFFIX;
 use crate::config::store::{Store};
 use crate::command::gitv2::{GitV2};
 
-pub const FEATURE_BRANCH_NAME_KEY: &str = "lab.flow.branch.feature";
-pub const BUGFIX_BRANCH_NAME_KEY: &str = "lab.flow.branch.bugfix";
-pub const HOTFIX_BRANCH_NAME_KEY: &str = "lab.flow.branch.hotfix";
-pub const RELEASE_BRANCH_NAME_KEY: &str = "lab.flow.branch.release";
-pub const DEVELOP_BRANCH_NAME_KEY: &str = "lab.flow.branch.develop";
-pub const MAIN_BRANCH_NAME_KEY: &str = "lab.flow.branch.main";
+use crate::config::constants::{
+    FEATURE_BRANCH_NAME_KEY,
+    BUGFIX_BRANCH_NAME_KEY,
+    HOTFIX_BRANCH_NAME_KEY,
+    RELEASE_BRANCH_NAME_KEY,
+    DEVELOP_BRANCH_NAME_KEY,
+    MAIN_BRANCH_NAME_KEY,
+};
 
 pub enum Script {}
 
