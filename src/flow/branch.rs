@@ -15,33 +15,33 @@ use crate::command::gitv2::GitV2;
 
 fn get_config_branch (prefix: Option<String>, name: &str) -> Result<Branch, String> {
     
-    let develop_name = match Store::get(DEVELOP_BRANCH_NAME_KEY) {
-        Ok(develop_name) => develop_name,
+    let develop_name:String = match Store::get(DEVELOP_BRANCH_NAME_KEY) {
+        Ok(develop_name) => String::from(develop_name.trim()),
         Err(_) => return Err("Develop branch name not found".to_string())
     };
 
-    let main_name = match Store::get(MAIN_BRANCH_NAME_KEY) {
-        Ok(main_name) => main_name,
+    let main_name: String = match Store::get(MAIN_BRANCH_NAME_KEY) {
+        Ok(main_name) => String::from(main_name.trim()),
         Err(_) => return Err("Main branch name not found".to_string())
     };
 
-    let release_prefix = match Store::get(RELEASE_BRANCH_NAME_KEY) {
-        Ok(release_prefix) => release_prefix,
+    let release_prefix: String = match Store::get(RELEASE_BRANCH_NAME_KEY) {
+        Ok(release_prefix) => String::from(release_prefix.trim()),
         Err(_) => return Err("Release branch prefix not found".to_string())
     };
 
-    let feature_prefix = match Store::get(FEATURE_BRANCH_NAME_KEY) {
-        Ok(feature_prefix) => feature_prefix,
+    let feature_prefix: String = match Store::get(FEATURE_BRANCH_NAME_KEY) {
+        Ok(feature_prefix) => String::from(feature_prefix.trim()),
         Err(_) => return Err("Feature branch prefix not found".to_string())
     };
 
-    let hotfix_prefix = match Store::get(HOTFIX_BRANCH_NAME_KEY) {
-        Ok(hotfix_prefix) => hotfix_prefix,
+    let hotfix_prefix: String = match Store::get(HOTFIX_BRANCH_NAME_KEY) {
+        Ok(hotfix_prefix) => String::from(hotfix_prefix.trim()),
         Err(_) => return Err("Hotfix branch prefix not found".to_string())
     };
 
-    let bugfix_prefix = match Store::get(BUGFIX_BRANCH_NAME_KEY) {
-        Ok(bugfix_prefix) => bugfix_prefix,
+    let bugfix_prefix: String = match Store::get(BUGFIX_BRANCH_NAME_KEY) {
+        Ok(bugfix_prefix) => String::from(bugfix_prefix.trim()),
         Err(_) => return Err("Bugfix branch prefix not found".to_string())
     };
 
@@ -60,12 +60,15 @@ fn get_config_branch (prefix: Option<String>, name: &str) -> Result<Branch, Stri
             }
         },
         None => {
-            if name == develop_name {
+
+            println!("[DEBUG] The name is \"{}\"", name);
+
+            if name == &develop_name {
                 return Ok(Branch::Develop(name.to_string()));
-            } else if name == main_name {
+            } else if name == &main_name {
                 return Ok(Branch::Main(name.to_string()));
             } else {
-                return Err(format!("Unknown branch name {}", name));
+                return Err(format!("Unknown branch name {}  (not {} or {})", name, &main_name, &develop_name));
             }
         }
     }
@@ -88,25 +91,27 @@ impl Branch {
     // FIXME: With the Option<Branch>, we don't need the unwrap. We return None
     pub fn from (branch_full_name: &str) -> Branch {
 
-        let prefix = match branch_full_name.split("/").next() {
-            Some(prefix) => Some(format!("{}/", prefix)),
-            None => None,
-        };
-        let name = match branch_full_name.split("/").last() {
+        let name: &str = match branch_full_name.split("/").last() {
             Some(name) => name,
             None => branch_full_name,
         };
 
-        let prefix = match prefix {
+        let prefix: Option<String> = match branch_full_name.split("/").next() {
             Some(prefix) => {
+
                 if prefix.starts_with(name) {
                     None
                 } else {
-                    Some(prefix)
+                    Some(format!("{}/", prefix))
                 }
+
             },
             None => None,
         };
+
+        println!("[DEBUG] name: {:?}", name);
+
+        println!("[DEBUG] prefix: {:?}", prefix);
 
         // FIXME: no unwrap
         return get_config_branch(prefix, name).unwrap();

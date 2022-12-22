@@ -1,6 +1,6 @@
 use crate::flow::branch::{Branch};
 use crate::command::runner::{Runner};
-
+#[deprecated(note = "Use GitV2 instead")]
 pub enum Git {}
 
 pub trait Gitable {

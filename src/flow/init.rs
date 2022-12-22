@@ -460,37 +460,37 @@ fn store_branch_names (
 ) -> Result<(), Box<InitError>> {
 
     // 1. Storing the feature branch "prefix".
-    match Store::add(FEATURE_BRANCH_NAME_KEY, feature_branch_name) {
+    match Store::add(FEATURE_BRANCH_NAME_KEY, feature_branch_name.trim()) {
         Ok(_) => {},
         Err(e) => return Err(Box::new(InitError::new(e)))
     }
 
     // 2. Storing the bugfix branch "prefix".
-    match Store::add(BUGFIX_BRANCH_NAME_KEY, bugfix_branch_name) {
+    match Store::add(BUGFIX_BRANCH_NAME_KEY, bugfix_branch_name.trim()) {
         Ok(_) => {},
         Err(e) => return Err(Box::new(InitError::new(e)))
     }
 
     // 3. Storing the hotfix branch "prefix".
-    match Store::add(HOTFIX_BRANCH_NAME_KEY, hotfix_branch_name) {
+    match Store::add(HOTFIX_BRANCH_NAME_KEY, hotfix_branch_name.trim()) {
         Ok(_) => {},
         Err(e) => return Err(Box::new(InitError::new(e)))
     }
 
     // 4. Storing the release branch "prefix".
-    match Store::add(RELEASE_BRANCH_NAME_KEY, release_branch_name) {
+    match Store::add(RELEASE_BRANCH_NAME_KEY, release_branch_name.trim()) {
         Ok(_) => {},
         Err(e) => return Err(Box::new(InitError::new(e)))
     }
 
     // 5. Storing the develop branch name.
-    match Store::add(DEVELOP_BRANCH_NAME_KEY, develop_branch_name) {
+    match Store::add(DEVELOP_BRANCH_NAME_KEY, develop_branch_name.trim()) {
         Ok(_) => {},
         Err(e) => return Err(Box::new(InitError::new(e)))
     }
 
     // 6. Storing the main branch name.
-    match Store::add(MAIN_BRANCH_NAME_KEY, main_branch_name) {
+    match Store::add(MAIN_BRANCH_NAME_KEY, main_branch_name.trim()) {
         Ok(_) => {},
         Err(e) => return Err(Box::new(InitError::new(e)))
     }
