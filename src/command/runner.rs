@@ -1,15 +1,7 @@
 use std::process::{Command, Output};
 use std::env;
 
-pub trait Browseable {
-
-    fn open (url: &str);
-
-}
-
 pub enum Runner {}
-
-pub enum Browser {}
 
 impl Runner {
 

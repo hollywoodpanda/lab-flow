@@ -8,8 +8,8 @@ use std::process;
 
 use config::error::{INIT_ERROR_CODE};
 
-use flow::init::{Script};
-use command::args::Args;
+use flow::{init::{Script}, branch::Branch};
+use command::{args::{Action}, gitv2::GitV2, browser::Browser};
 
 fn using_store_strategy () {
 
@@ -28,27 +28,53 @@ fn using_store_strategy () {
 
 }
 
-fn inspect_args () {
-    
-        let args: Vec<String> = std::env::args().collect();
-    
-        let args = Args::new(args);
-    
-        let branch_name = match args.branch {
-            Some(branch) => String::from(branch.name()),
-            None => "".to_string()
-        };
+fn inspect_action () -> Option<Action> {
 
-        let release_branch = match args.release {
-            Some(release) => String::from(release.name()),
-            None => "".to_string()
-        };
+    let args: Vec<String> = std::env::args().collect();
 
-        println!("Branch: {}", branch_name);
-        println!("Release branch (if informed): {}", release_branch);
-        println!("Is init: {}", args.is_init);
-        println!("Files: {:?}", args.files);
-    
+    let action = Action::new(&args);
+
+    match &action {
+        
+        Some(action) => {
+            
+            println!("Action: {:?}", action);
+            
+            match action {
+                Action::Init => {
+                    println!("[DEBUG] Init");
+                },
+                Action::Start(branch, _) => {
+                    println!("[DEBUG] Start: {:?}", branch);
+                },
+                Action::Finish(branch) => {
+                    println!("[DEBUG] Finish: with name {}{}", branch.prefix().unwrap_or(String::new()), branch.name());                    
+                },
+            }
+            
+        },
+        None => {
+            println!("No action");
+        }
+    }
+
+    println!("[DEBUG] Action: {:?}", &action);
+
+    action    
+
+}
+
+fn test_git_remote () {
+
+    match Browser::merge_request(&Branch::Feature(String::from("jack")), &Branch::Develop("develop".to_string())) {
+        Ok(url) => {
+            println!("URL: {}", url);
+        },
+        Err(e) => {
+            eprintln!("[ERROR] {}", e);
+        }
+    }
+
 }
 
 fn main() {
@@ -57,8 +83,26 @@ fn main() {
     println!("Lab Flow");
     println!("#########\r\n");
 
+    // test_git_remote();
     //using_store_strategy();
 
-    inspect_args();
-    
+    // if 1 != 1 {
+    //     using_store_strategy();
+    // }
+
+    if 1 != 2 {
+        match inspect_action() {
+            Some(action) => { 
+                match action.execute() {
+                    Ok(_) => println!("[DEBUG] executed!"),
+                    Err(e) => {
+                        eprintln!("[ERROR] {}", e);
+                    }
+                } 
+            },
+            None => {}
+        }
+        
+    }
+
 }

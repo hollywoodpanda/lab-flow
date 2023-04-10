@@ -133,25 +133,25 @@ impl Branch {
         match self {
             Branch::Feature(_) => {
                 match Store::get(FEATURE_BRANCH_NAME_KEY) {
-                    Ok(prefix) => Some(prefix),
+                    Ok(prefix) => Some(String::from(prefix.trim())),
                     Err(_) => None,
                 }
             },
             Branch::Hotfix(_) => {
                 match Store::get(HOTFIX_BRANCH_NAME_KEY) {
-                    Ok(prefix) => Some(prefix),
+                    Ok(prefix) => Some(String::from(prefix.trim())),
                     Err(_) => None,
                 }
             },
             Branch::Bugfix(_) => {
                 match Store::get(BUGFIX_BRANCH_NAME_KEY) {
-                    Ok(prefix) => Some(prefix),
+                    Ok(prefix) => Some(String::from(prefix.trim())),
                     Err(_) => None,
                 }
             },
             Branch::Release(_) => {
                 match Store::get(RELEASE_BRANCH_NAME_KEY) {
-                    Ok(prefix) => Some(prefix),
+                    Ok(prefix) => Some(String::from(prefix.trim())),
                     Err(_) => None,
                 }
             },
@@ -218,8 +218,10 @@ impl Branch {
             &branch_name
         ) {
             Ok(branches) => {
+                println!("[DEBUG] The branches are... {:?}", branches);
                 branches
                     .iter()
+                    .filter(|branch_name| !branch_name.contains("remotes/"))
                     .map(|branch_name| Branch::from(branch_name))
                     .collect()
             },

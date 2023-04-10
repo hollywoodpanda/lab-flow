@@ -18,11 +18,88 @@ pub enum GitV2 {}
 /// 
 impl GitV2 {
 
+    pub fn is_remote () -> bool {
+
+        match Runner::run("git remote -v") {
+            Ok(remote) => {
+
+                if ! remote.trim().is_empty() {
+                    true
+                } else {
+                    false
+                }
+
+            },
+            Err(_) => false
+        }
+
+    }
+
+    pub fn remote_push () -> Option<String> {
+
+        match Runner::run("git remote -v") {
+            Ok(remote) => {
+
+                println!("[DEBUG]  raw remote: {}", remote);
+
+                let regex = match Regex::new(r"origin\s+(?P<url>.+)\s+\(push\)") {
+
+                    Ok(regex) => regex,
+                    Err(_) => return None
+
+                };
+
+                let captures = regex.captures(&remote);
+
+                if let Some(captures) = captures {
+                    Some(captures["url"].to_string())
+                } else {
+                    None
+                }
+
+            },
+            Err(_) => None
+        }
+
+    }
+
+    pub fn exists (branch_name: &str) -> bool {
+        
+        let local_evaluation = match Runner::run(&format!("git branch --list {}", branch_name)) {
+            Ok(_) => true,
+            Err(_) => false
+        };
+
+        if local_evaluation {
+            return true;
+        }
+        
+        match Runner::run(&format!("git ls-remote --heads origin {}", branch_name)) {
+            Ok(_) => true,
+            Err(_) => false
+        }
+
+    }
+
     ///
     /// Pushes changes to the remote repository
     /// 
-    pub fn push (branch_name: &str) -> Result<String, String> {
-        Runner::run(&format!("git push origin {}", branch_name))
+    /// ### Parameters
+    /// 
+    /// * `branch_name` - The name of the branch to be pushed
+    /// * `first_push` - If it is the first push, the `-u` flag is used
+    /// 
+    /// ### Returns
+    /// 
+    /// * `Result<String, String>` - The output of the git command
+    /// 
+    /// 
+    pub fn push (branch_fullname: &str, first_push: bool) -> Result<String, String> {
+        if first_push {
+            Runner::run(&format!("git push -u origin {}", branch_fullname))
+        } else {
+            Runner::run(&format!("git push origin {}", branch_fullname))
+        }
     }
 
     ///

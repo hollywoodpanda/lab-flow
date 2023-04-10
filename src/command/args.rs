@@ -1,172 +1,271 @@
-use crate::flow::branch::Branch;
 use crate::config::store::Store;
-use crate::config::constants::{
-    FEATURE_BRANCH_NAME_KEY,
-    BUGFIX_BRANCH_NAME_KEY,
-    HOTFIX_BRANCH_NAME_KEY,
-    RELEASE_BRANCH_NAME_KEY,
-    DEVELOP_BRANCH_NAME_KEY,
-    MAIN_BRANCH_NAME_KEY,
-};
+use crate::flow::branch::Branch;
+use crate::flow::init::Script;
 
+use crate::command::gitv2::GitV2;
 
-pub struct Args {
-    pub is_init: bool,
-    pub is_branch_related: bool,
-    pub branch: Option<Branch>,
-    pub release: Option<Branch>,
-    pub files: Option<Vec<String>>
+use crate::config::constants::DEVELOP_BRANCH_NAME_KEY;
+
+use super::browser::Browser;
+
+#[derive(Debug)]
+pub enum Action {
+    Init,
+    Start(Branch, Option<Branch>),
+    Finish(Branch),
+    // TODO: Publish(Branch),
+    // TODO: Pull(Branch),
+    // TODO: Track(Branch),    
 }
 
-#[deprecated(note = "Not sure this is really needed")]
-struct BranchConfig {
-    develop: String,
-    main: String,
-    release: String,
-    feature: String,
-    hotfix: String,
-    bugfix: String
-}
+impl Action {
 
-impl Args {
+    fn branch_prefix (args: &Vec<String>) -> Option<&str> {
 
-    fn get_branch_from_store (key: &str) -> Result<String, String> {
-        match Store::get(key) {
-            Ok(branch_name) => Ok(String::from(branch_name.trim())),
-            Err(_) => Err(format!("{} not found", key))
+        if args.len() >= 2 {
+            return Some(&args[1]);
         }
+
+        None
+
     }
 
-    fn get_branch_from_text (arg: &str) -> Option<Branch> {
+    fn action_text (args: &Vec<String>) -> Option<&str> {
+
+        if args.len() >= 2 && args[1] == "init" {
+            return Some(&args[1]);
+        }
+
+        if args.len() >= 3 {
+            return Some(&args[2]);
+        }
+
+        None
+
+    }
+
+    fn branch_name (args: &Vec<String>) -> Option<&str> {
         
-        let develop_config = match Args::get_branch_from_store(DEVELOP_BRANCH_NAME_KEY) {
-            Ok(develop_name) => develop_name,
-            Err(_) => return None
-        };
-
-        let main_config = match Args::get_branch_from_store(MAIN_BRANCH_NAME_KEY) {
-            Ok(main_name) => main_name,
-            Err(_) => return None
-        };
-
-        let release_config = match Args::get_branch_from_store(RELEASE_BRANCH_NAME_KEY) {
-            Ok(release_name) => release_name,
-            Err(_) => return None
-        };
-
-        let feature_config = match Args::get_branch_from_store(FEATURE_BRANCH_NAME_KEY) {
-            Ok(feature_name) => feature_name,
-            Err(_) => return None
-        };
-
-        let hotfix_config = match Args::get_branch_from_store(HOTFIX_BRANCH_NAME_KEY) {
-            Ok(hotfix_name) => hotfix_name,
-            Err(_) => return None
-        };
-
-        let bugfix_config = match Args::get_branch_from_store(BUGFIX_BRANCH_NAME_KEY) {
-            Ok(bugfix_name) => bugfix_name,
-            Err(_) => return None
-        };
-
-        let branch: Branch = match arg {
-            _ if arg == develop_config => Branch::Develop(String::from(arg)),
-            _ if arg == main_config => Branch::Main(String::from(arg)),
-            _ if arg.starts_with(&release_config) => Branch::Release(String::from(arg)),
-            _ if arg.starts_with(&feature_config) => Branch::Feature(String::from(arg)),
-            _ if arg.starts_with(&hotfix_config) => Branch::Hotfix(String::from(arg)),
-            _ if arg.starts_with(&bugfix_config) => Branch::Bugfix(String::from(arg)),
-            _ => return None
-        };
-
-        Some(branch)
-
-    }
-
-    fn extract_branch (args: &Vec<String>) -> Option<Branch> {
-        match args.len() {
-            0 ..= 1 => None,
-            _ => Args::get_branch_from_text(&args[1])
+        if args.len() >= 4 {
+            return Some(&args[3]);
         }
+
+        None
+
     }
 
-    fn extract_is_branch_related (args: &Vec<String>) -> bool {
-        Args::extract_branch(args).is_some()
+    fn branch (prefix: &str, name: &str) -> Option<Branch> {
+
+        match prefix.to_lowercase().as_str() {
+            "feature" => Some(Branch::Feature(name.to_string())),
+            "hotfix" => Some(Branch::Hotfix(name.to_string())),
+            "bugfix" => Some(Branch::Bugfix(name.to_string())),
+            "release" => Some(Branch::Release(name.to_string())),
+            _ => None
+        }
+
     }
 
-    fn extract_release_branch (args: &Vec<String>) -> Option<Branch> {
+    fn calculate_branch (args: &Vec<String>) -> Option<Branch> {
 
-        let release_name: Option<String> = match args.len() {
-            0 ..= 2 => None,
-            _ => {
+        let branch_prefix = Self::branch_prefix(args);
+        let branch_name = Self::branch_name(args);
 
-                let slice: &[String] = &args[2..];
+        match (branch_prefix, branch_name) {
 
-                let found = slice.iter().position(|arg| arg == &"--release");
+            (Some(prefix), Some(name)) => {
 
-                match found {
-                    Some(index) => {
+                return Self::branch(prefix, name);
 
-                        match slice.len() {
-                            n if n > index + 1 => {
+            },
+            _ => None
+        }
 
-                                println!("[DEBUG] Release branch name: {}", &slice[index + 1]);
+    }
 
-                                match Args::get_branch_from_store(RELEASE_BRANCH_NAME_KEY) {
-                                    Ok(release_name) => {
+    ///
+    /// Creates a new Action from the given arguments.
+    /// 
+    /// # Argument
+    /// * `args` The console arguments used in the git flow command
+    /// 
+    /// # Returns
+    /// 
+    /// * `Some(Action)` The Action, if it could be parsed - or None.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// use crate::command::args::Action;
+    /// 
+    /// let args: Vec<String> = std::env::args().collect();
+    /// 
+    /// let my_action = Action::new(&args);
+    /// ```
+    /// 
+    /// @return The Action, if it could be parsed
+    pub fn new (args: &Vec<String>) -> Option<Self> {
 
-                                        if !&slice[index + 1].starts_with(&release_name) {
-                                            println!("[WARN] The given release branch is not a release branch or it is not configured as such.");
-                                            None
-                                        } else {
-                                            Some(String::from(&slice[index + 1]))
-                                        }
+        // No arguments? Somethings is fishy!
+        if args.len() <= 0 {
+            return None;
+        }
 
-                                    },
-                                    Err(_) => None
-                                }
+        // Let's see what action we're dealing with
+        match Self::action_text(&args) {
 
-                            },
-                            _ => None
-                        }
+            // git flow init ...
+            Some("init") => Some(Action::Init),
 
-                    },
+            // git flow <action> finish <branch> ...
+            Some("finish") => {
+
+                match Self::calculate_branch(&args) {
+                    Some(branch) => Some(Action::Finish(branch)),
                     None => None
                 }
 
-            }
-        };
+            },
 
-        match release_name {
-            Some(name) => Args::get_branch_from_text(&name),
-            None => None
+            // git flow <action> start <branch> ...
+            Some("start") => {
+
+                match Self::calculate_branch(&args) {
+                    Some(branch) => Some(Action::Start(branch, None)),
+                    None => None
+                }
+
+            },
+
+            // Unrecognized action 🫣
+            _ => None,
+
         }
 
     }
 
-    pub fn new (args: Vec<String>) -> Self {
+    fn init () -> Result<(), String> {
+        
+        if Script::is_initiated() {
+            return Ok(());
+        }
 
-        let is_init: bool = match args.len() {
-            0 ..= 1 => false,
-            _ => args[1] == "init"
+        match Script::create() {
+            Ok(_) => Ok(()),
+            // TODO: Improve this error message
+            Err(_) => Err(String::from("Couldn't initialize lab flow."))
+        }
+
+    }
+
+    fn start (branch: &Branch) -> Result<(), String> {
+
+        println!("[DEBUG] Start called!");
+
+        let mut prefix_text: String = String::new();
+
+        match branch.prefix() {
+            Some(pfx) => {
+                prefix_text = pfx;
+            },
+            _ => {},
         };
 
-        let branch: Option<Branch> = Args::extract_branch(&args);
+        let prefix: Option<&str> = match prefix_text.as_str() {
+            "" => None,
+            _ => Some(&prefix_text)
+        };
 
-        let is_branch_related: bool = Args::extract_is_branch_related(&args);
+        println!("[DEBUG] Prefix is {:?}", &prefix);
 
-        let release = Args::extract_release_branch(&args);
+        let develop_name = match Store::get(DEVELOP_BRANCH_NAME_KEY) {
+            Ok(name) => name,
+            Err(e) => { return Err(e); }
+        };
 
-        let release: Option<Branch> = Args::extract_release_branch(&args);
-        
-        Args {
-            is_init,
-            is_branch_related,
-            branch,
-            release: release,
-            files: None
+        println!("[DEBUG] Develop name is {}", develop_name);
+
+        // Vamos pra develop...
+        match GitV2::checkout(None, &develop_name, false) {
+            Ok(_) => {},
+            Err(e) => { return Err(e); }
         }
+
+        println!("[DEBUG] Checkout to develop done!");
+
+        // Criamos a branch nova...
+        match GitV2::checkout(prefix, branch.name(), true) {
+            Ok(_) => {},
+            Err(e) => { return Err(e); }
+        }
+
+        println!("[DEBUG] Checkout of branch {} done!", &branch.name());
+
+        // Damos push caso exista o remote
+        match GitV2::push(&format!("{}{}", &prefix_text, &branch.name()), true) {
+            Ok(_) => {},
+            Err(_) => { println!("[DEBUG] Error pushing to remote... Is there a remote server?"); }
+        }
+
+        println!("[DEBUG] Push done!");
+
+        Ok(())
+
+    }
+
+    fn finish (branch: &Branch) -> Result<(), String> {
         
+        // 1. Tem remoto?
+        if GitV2::is_remote() {
+
+            let mut branch_prefix_text = match branch.prefix() {
+                Some(pfx) => Some(pfx.clone()),
+                None => None
+            };
+
+            let mut branch_prefix = match &branch_prefix_text {
+                Some(pfx) => Some(pfx.as_str()),
+                None => None
+            };
+
+            match branch.source() {
+                Ok(sources) => {
+
+                    sources.iter().for_each(|source| println!("[DEBUG] Source is {}", source));
+
+                },
+                Err(e) => { return Err(e); }
+            }
+
+            //Browser::merge_request(branch, origin)
+
+        } else {
+
+        }
+
+            // 1.2. Se tem, abrimos página de MR
+
+            // 1.3. Se não tem, mergeamos branch na develop
+
+        // 2. Checkout da develop
+
+        // 3. Se deu certo, removemos a branch local
+
+        Ok(())
+
+    }
+    
+    pub fn execute (&self) -> Result<(), String> {
+
+        match self {
+
+            Action::Init => Self::init(),
+            Action::Start(branch, _) => Self::start(branch),
+            Action::Finish(branch) => Self::finish(branch),
+
+        }
+
     }
 
 }
+

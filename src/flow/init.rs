@@ -364,7 +364,9 @@ fn stage_and_commit_all_files () -> Result<(), Box<InitError>> {
 
 fn push_branch (branch_name: &str) {
 
-    match GitV2::push(branch_name) {
+    
+
+    match GitV2::push(branch_name, true) {
         Ok(_) => {},
         Err(_) => {
 
