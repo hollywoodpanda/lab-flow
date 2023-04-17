@@ -1,6 +1,8 @@
 use std::process::{Command, Output};
 use std::env;
 
+use crate::working;
+
 pub enum Runner {}
 
 impl Runner {
@@ -31,7 +33,7 @@ impl Runner {
 
     pub fn run (command: &str) -> Result<String, String> {
 
-        println!("{}", command);
+        working!("{}", command);
 
         let command_result: Result<Output, std::io::Error> = if cfg!(target_os = "windows") {
             run_for_windows(command)

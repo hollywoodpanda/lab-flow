@@ -1,5 +1,6 @@
 use crate::flow::branch::{Branch};
 use crate::command::runner::{Runner};
+use crate::info;
 #[deprecated(note = "Use GitV2 instead")]
 pub enum Git {}
 
@@ -32,7 +33,7 @@ impl Gitable for Git {
     fn status () -> Result<(), String> {
         match Runner::run("git status") {
             Ok(msg) => {
-                println!("Status ok: {}", msg);
+                info!("Status ok: {}", msg);
                 Ok(())
             },
             Err(e) => Err(e)
@@ -43,14 +44,14 @@ impl Gitable for Git {
 
         match Git::status() {
             Ok(_) => {
-                println!("Git is already initiated");
+                info!("Git is already initiated");
                 Ok(())
             },
             Err(error_message) => {
-                println!("Git is not initiated: {}", error_message);
+                info!("Git is not initiated: {}", error_message);
                 match Runner::run("git init") {
                     Ok(_) => {
-                        println!("Git is initiated");
+                        info!("Git is initiated");
                         Ok(())
                     },
                     Err(e) => Err(e)

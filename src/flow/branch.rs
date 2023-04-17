@@ -12,6 +12,7 @@ use crate::config::constants::{
 use crate::config::store::{Store};
 
 use crate::command::gitv2::GitV2;
+use crate::{info, error, working};
 
 fn get_config_branch (prefix: Option<String>, name: &str) -> Result<Branch, String> {
     
@@ -47,6 +48,9 @@ fn get_config_branch (prefix: Option<String>, name: &str) -> Result<Branch, Stri
 
     match prefix {
         Some(prefix) => {
+
+            info!("Branch \"{}\" have prefix \"{}\"", name, prefix);
+
             if prefix == feature_prefix {
                 return Ok(Branch::Feature(name.to_string()));
             } else if prefix == hotfix_prefix {
@@ -61,7 +65,7 @@ fn get_config_branch (prefix: Option<String>, name: &str) -> Result<Branch, Stri
         },
         None => {
 
-            println!("[DEBUG] The name is \"{}\"", name);
+            info!("Branch \"{}\" have no prefix", name);
 
             if name == &develop_name {
                 return Ok(Branch::Develop(name.to_string()));
@@ -192,7 +196,7 @@ impl Branch {
         let branch_only_commits = match GitV2::exclusive_commits(branch_prefix, &branch_name) {
             Ok(commits) => commits,
             Err(err) => {
-                println!("[ERROR] {}", err);
+                error!("{}", err);
                 return Err(err);
             },
         };
@@ -201,7 +205,7 @@ impl Branch {
         let branch_commits = match GitV2::all_commits(branch_prefix, &branch_name, 100) {
             Ok(commits) => commits,
             Err(err) => {
-                println!("[ERROR] {}", err);
+                error!("{}", err);
                 return Err(err);
             },
         };
@@ -237,7 +241,7 @@ impl Branch {
                     .map(|possible_branch| {
                         match possible_branch {
                             Some(branch) => {
-                                println!("[DEBUG] Evaluating source branch {:?}", branch);
+                                working!("Evaluating source branch {:?}", branch);
                                 match branch {
                                     Branch::Main(main_name) => Some(Branch::Main(main_name)),
                                     Branch::Develop(develop_name) => Some(Branch::Develop(develop_name)),
@@ -252,7 +256,7 @@ impl Branch {
                     .collect()
             },
             Err(err) => {
-                println!("Error fetching the source branches: {}", err);
+                error!("Error fetching the source branches: {}", err);
                 return Err(err);
             },
         };
