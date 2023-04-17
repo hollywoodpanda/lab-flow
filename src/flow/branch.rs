@@ -87,9 +87,23 @@ pub enum Branch {
 
 impl Branch {
 
-    // FIXME: Should return an Option<Branch>!
-    // FIXME: With the Option<Branch>, we don't need the unwrap. We return None
-    pub fn from (branch_full_name: &str) -> Branch {
+    ///
+    /// Get the given branch from the local repository,
+    /// if it exists. Otherwise, return None.
+    /// 
+    /// ### Arguments
+    /// * `branch_full_name` - The full name of the branch, including the prefix.
+    /// 
+    /// ### Returns
+    /// * `Option<Branch>` - The branch, if it exists.
+    /// 
+    /// ### Example
+    /// 
+    /// ```rust
+    /// let some_branch: Option<Branch> = Branch::from("feature/feature-branch");
+    /// ```
+    /// 
+    pub fn from (branch_full_name: &str) -> Option<Branch> {
 
         let name: &str = match branch_full_name.split("/").last() {
             Some(name) => name,
@@ -109,12 +123,10 @@ impl Branch {
             None => None,
         };
 
-        println!("[DEBUG] name: {:?}", name);
-
-        println!("[DEBUG] prefix: {:?}", prefix);
-
-        // FIXME: no unwrap
-        return get_config_branch(prefix, name).unwrap();
+        match get_config_branch(prefix, name) {
+            Ok(branch) => Some(branch),
+            Err(_) => return None,
+        }
        
     }
 
@@ -218,11 +230,25 @@ impl Branch {
             &branch_name
         ) {
             Ok(branches) => {
-                println!("[DEBUG] The branches are... {:?}", branches);
                 branches
                     .iter()
                     .filter(|branch_name| !branch_name.contains("remotes/"))
                     .map(|branch_name| Branch::from(branch_name))
+                    .map(|possible_branch| {
+                        match possible_branch {
+                            Some(branch) => {
+                                println!("[DEBUG] Evaluating source branch {:?}", branch);
+                                match branch {
+                                    Branch::Main(main_name) => Some(Branch::Main(main_name)),
+                                    Branch::Develop(develop_name) => Some(Branch::Develop(develop_name)),
+                                    Branch::Release(release_name) => Some(Branch::Release(release_name)),
+                                    _ => None,
+                                }
+                            },
+                            None => None,
+                        }
+                    })
+                    .filter_map(|possible_branch| possible_branch.as_ref().cloned())
                     .collect()
             },
             Err(err) => {

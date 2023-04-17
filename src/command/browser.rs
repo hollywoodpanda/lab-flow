@@ -11,7 +11,7 @@ impl Browser {
 
     pub fn merge_request (branch: &Branch, origin: &Branch) -> Result<String, String> {
 
-        return match GitV2::remote_push() {
+        return match GitV2::remote_push_url() {
 
             Some(remote_url) => {
 
@@ -22,10 +22,14 @@ impl Browser {
                     None => branch.name().to_string()
                 };
 
+                let branch_name = encode(&branch_name);
+
                 let origin_name = match origin.prefix() {
                     Some(prefix) => format!("{}{}", prefix, origin.name()),
                     None => origin.name().to_string()
                 };
+
+                let origin_name = encode(&origin_name);
 
                 let merge_request_message = format!("Merging branch {} into {}", branch_name, origin_name);
                 let merge_request_message = encode(&merge_request_message);

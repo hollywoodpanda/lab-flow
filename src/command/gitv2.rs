@@ -1,5 +1,5 @@
 use regex::Regex;
-use crate::command::runner::{Runner};
+use crate::{command::runner::{Runner}, config::constants::COMMIT_HASH_REGEX_PATTERN};
 
 /**
  * git-flow vs git (Very cool comparison)
@@ -35,7 +35,7 @@ impl GitV2 {
 
     }
 
-    pub fn remote_push () -> Option<String> {
+    pub fn remote_push_url () -> Option<String> {
 
         match Runner::run("git remote -v") {
             Ok(remote) => {
@@ -63,21 +63,37 @@ impl GitV2 {
 
     }
 
-    pub fn exists (branch_name: &str) -> bool {
-        
-        let local_evaluation = match Runner::run(&format!("git branch --list {}", branch_name)) {
+    pub fn exists_local (branch_fullname: &str) -> bool {
+        match Runner::run(&format!("git branch --list {}", branch_fullname)) {
             Ok(_) => true,
             Err(_) => false
-        };
+        }
+    }
 
-        if local_evaluation {
+    pub fn exists_remote (branch_fullname: &str) -> bool {
+        match Runner::run(&format!("git ls-remote --heads origin {}", branch_fullname)) {
+            Ok(remote_response) => {
+                let regex = match Regex::new(COMMIT_HASH_REGEX_PATTERN) {
+                    Ok(regex) => regex,
+                    Err(_) => return false
+                };
+                let captures = regex.captures(&remote_response);
+                if let Some(_) = captures {
+                    return true;
+                }
+                false
+            },
+            Err(_) => false
+        }
+    }
+
+    pub fn exists (branch_fullname: &str) -> bool {
+        
+        if GitV2::exists_local(branch_fullname) {
             return true;
         }
         
-        match Runner::run(&format!("git ls-remote --heads origin {}", branch_name)) {
-            Ok(_) => true,
-            Err(_) => false
-        }
+        return GitV2::exists_remote(branch_fullname);
 
     }
 
@@ -93,7 +109,7 @@ impl GitV2 {
     /// 
     /// * `Result<String, String>` - The output of the git command
     /// 
-    /// 
+    /// FIXME: Should receive the prefix and name as separate parameters!
     pub fn push (branch_fullname: &str, first_push: bool) -> Result<String, String> {
         if first_push {
             Runner::run(&format!("git push -u origin {}", branch_fullname))
@@ -152,6 +168,35 @@ impl GitV2 {
         }
     }
 
+    pub fn merge_local (
+        source_branch_prefix: Option<&str>, 
+        source_branch_name: &str,
+        target_branch_prefix: Option<&str>,
+        target_branch_name: &str
+    ) -> Result<String, String> {
+
+        let source_branch_prefix = match source_branch_prefix {
+            Some(prefix) => prefix,
+            None => "",
+        };
+
+        let target_branch_prefix = match target_branch_prefix {
+            Some(prefix) => prefix,
+            None => "",
+        };
+
+        return Runner::run(
+            &format!(
+                "git fetch . {}{}:{}{}", 
+                source_branch_prefix, 
+                source_branch_name, 
+                target_branch_prefix, 
+                target_branch_name
+            )
+        );
+
+    }
+
     ///
     /// Commits the changes with the given message
     /// 
@@ -179,6 +224,39 @@ impl GitV2 {
         } else {
             format!("git checkout {}{}", branch_prefix, branch_name)
         };
+
+        Runner::run(&command)
+
+    }
+
+    ///
+    /// Removes the given local branch.
+    /// 
+    /// ### Parameters
+    /// 
+    /// * `branch_prefix` - The prefix of the branch to be removed
+    /// 
+    /// ### Returns
+    /// 
+    /// * `Result<String, String>` - The output of the git command
+    /// 
+    /// ### Example
+    /// 
+    /// ```rust
+    /// match GitV2::remove_local_branch(Some("feature/"), "my-feature") {
+    ///     Ok(output) => println!("Branch removed: {}", output),
+    ///     Err(error_message) => println!("Error removing branch: {}", error_message)
+    /// }
+    /// ```
+    /// 
+    pub fn remove_local_branch (branch_prefix: Option<&str>, branch_name: &str) -> Result<String, String> {
+
+        let branch_prefix = match branch_prefix {
+            Some(prefix) => prefix,
+            None => "",
+        };
+
+        let command = format!("git branch -D {}{}", branch_prefix, branch_name);
 
         Runner::run(&command)
 
@@ -227,7 +305,7 @@ impl GitV2 {
             },
         };
     
-        let regex: Regex = match Regex::new(r"[A-Za-z0-9]{40}") {
+        let regex: Regex = match Regex::new(COMMIT_HASH_REGEX_PATTERN) {
             Ok(regex) => regex,
             Err(err) => {
                 println!("[ERROR] {}", err);
@@ -272,7 +350,7 @@ impl GitV2 {
             }
         };
     
-        let regex = match Regex::new(r"[A-Za-z0-9]{40}") {
+        let regex = match Regex::new(COMMIT_HASH_REGEX_PATTERN) {
             Ok(regex) => regex,
             Err(err) => {
                 println!("[ERROR] {}", err);

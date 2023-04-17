@@ -54,9 +54,9 @@ impl Action {
 
     }
 
-    fn branch (prefix: &str, name: &str) -> Option<Branch> {
+    fn branch (branch_type: &str, name: &str) -> Option<Branch> {
 
-        match prefix.to_lowercase().as_str() {
+        match branch_type.to_lowercase().as_str() {
             "feature" => Some(Branch::Feature(name.to_string())),
             "hotfix" => Some(Branch::Hotfix(name.to_string())),
             "bugfix" => Some(Branch::Bugfix(name.to_string())),
@@ -158,7 +158,7 @@ impl Action {
 
     }
 
-    fn start (branch: &Branch) -> Result<(), String> {
+    fn start (branch: &Branch, source_branch: &Option<Branch>) -> Result<(), String> {
 
         println!("[DEBUG] Start called!");
 
@@ -214,38 +214,91 @@ impl Action {
     }
 
     fn finish (branch: &Branch) -> Result<(), String> {
-        
+
+        let branch_prefix_string = match branch.prefix() {
+            Some(pfx) => Some(pfx.clone()),
+            None => None
+        };
+
+        let branch_prefix_str = match &branch_prefix_string {
+            Some(pfx) => pfx.as_str(),
+            None => ""
+        };
+
+        let branch_prefix_option = match branch_prefix_str {
+            "" => None,
+            _ => Some(branch_prefix_str)
+        };
+
+        let branch_fullname = format!("{}{}", branch_prefix_str, branch.name());
+
+        let branch_sources = match branch.source() {
+            Ok(sources) => sources,
+            Err(e) => { return Err(e); }
+        };
+
         // 1. Tem remoto?
         if GitV2::is_remote() {
 
-            let mut branch_prefix_text = match branch.prefix() {
-                Some(pfx) => Some(pfx.clone()),
-                None => None
-            };
+            println!("[DEBUG] Branch fullname: {}", &branch_fullname);
 
-            let mut branch_prefix = match &branch_prefix_text {
-                Some(pfx) => Some(pfx.as_str()),
-                None => None
-            };
-
-            match branch.source() {
-                Ok(sources) => {
-
-                    sources.iter().for_each(|source| println!("[DEBUG] Source is {}", source));
-
-                },
+            // 1.1. Se não tem, criamos branch no remoto. Se tem, atualizamos no remoto            
+            match GitV2::push(&branch_fullname, ! GitV2::exists_remote(&branch_fullname)) {
+                Ok(_) => { println!("[DEBUG] Branch {} pushed to remote!", &branch_fullname); },
                 Err(e) => { return Err(e); }
             }
 
-            //Browser::merge_request(branch, origin)
+            branch_sources.iter().for_each(|source| {
+                match Browser::merge_request(&branch, source) {
+                    Ok(_) => {},
+                    Err(e) => { println!("[ERROR] Something weird while opening merge request 🫣: {}", e); }
+                }
+            });
 
-        } else {
+        } else { // Não tem remoto!
+            // 1.3. Se não tem, mergeamos branch nas sources
+            branch_sources.iter().for_each(|target_branch| {
 
+                let target_branch_prefix = match branch.prefix() {
+                    Some(pfx) => Some(pfx.clone()),
+                    None => None
+                };
+
+                let target_branch_prefix = match &target_branch_prefix {
+                    Some(pfx) => Some(pfx.as_str()),
+                    None => None
+                };
+
+                match GitV2::merge_local(
+                    branch_prefix_option,
+                    &branch.name(), 
+                    target_branch_prefix, 
+                    &target_branch.name()
+                ) {
+                    Ok(_) => {},
+                    Err(e) => { println!("[ERROR] Something weird while merging local branches 🫣: {}", e); }
+                }
+            });
         }
 
-            // 1.2. Se tem, abrimos página de MR
+            
+        // 1.2. Vamos para a develop...
+        match Store::get(DEVELOP_BRANCH_NAME_KEY) {
+            Ok(develop_name) => {
+                match GitV2::checkout(None, &develop_name, false) {
+                    Ok(_) => {},
+                    Err(e) => { return Err(e); }
+                }
+            },
+            Err(e) => { return Err(e); }
+        }
 
-            // 1.3. Se não tem, mergeamos branch na develop
+        // 1.3. ... e agora podemos remover a branch local (já estamos na develop)
+        match GitV2::remove_local_branch(branch_prefix_option, &branch.name()) {
+            Ok(_) => { println!("[DEBUG] Branch {} removed from local", &branch_fullname); },
+            Err(e) => { return Err(e); }
+        }
+            
 
         // 2. Checkout da develop
 
@@ -260,7 +313,7 @@ impl Action {
         match self {
 
             Action::Init => Self::init(),
-            Action::Start(branch, _) => Self::start(branch),
+            Action::Start(branch, source) => Self::start(branch, source),
             Action::Finish(branch) => Self::finish(branch),
 
         }
