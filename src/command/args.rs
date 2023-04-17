@@ -158,7 +158,7 @@ impl Action {
 
     }
 
-    fn start (branch: &Branch, source_branch: &Option<Branch>) -> Result<(), String> {
+    fn start (branch: &Branch, _source_branch: &Option<Branch>) -> Result<(), String> {
 
         println!("[DEBUG] Start called!");
 
@@ -215,17 +215,17 @@ impl Action {
 
     fn finish (branch: &Branch) -> Result<(), String> {
 
-        let branch_prefix_string = match branch.prefix() {
+        let branch_prefix_option_string = match branch.prefix() {
             Some(pfx) => Some(pfx.clone()),
             None => None
         };
 
-        let branch_prefix_str = match &branch_prefix_string {
+        let branch_prefix_str = match &branch_prefix_option_string {
             Some(pfx) => pfx.as_str(),
             None => ""
         };
 
-        let branch_prefix_option = match branch_prefix_str {
+        let branch_prefix_option_str = match branch_prefix_str {
             "" => None,
             _ => Some(branch_prefix_str)
         };
@@ -259,18 +259,20 @@ impl Action {
             // 1.3. Se não tem, mergeamos branch nas sources
             branch_sources.iter().for_each(|target_branch| {
 
-                let target_branch_prefix = match branch.prefix() {
+                // Valor em Option<String> 
+                let target_branch_prefix = match target_branch.prefix() {
                     Some(pfx) => Some(pfx.clone()),
                     None => None
                 };
 
+                // Valor como precisamos, Option<&str>
                 let target_branch_prefix = match &target_branch_prefix {
                     Some(pfx) => Some(pfx.as_str()),
                     None => None
                 };
 
                 match GitV2::merge_local(
-                    branch_prefix_option,
+                    branch_prefix_option_str,
                     &branch.name(), 
                     target_branch_prefix, 
                     &target_branch.name()
@@ -294,7 +296,7 @@ impl Action {
         }
 
         // 1.3. ... e agora podemos remover a branch local (já estamos na develop)
-        match GitV2::remove_local_branch(branch_prefix_option, &branch.name()) {
+        match GitV2::remove_local_branch(branch_prefix_option_str, &branch.name()) {
             Ok(_) => { println!("[DEBUG] Branch {} removed from local", &branch_fullname); },
             Err(e) => { return Err(e); }
         }
