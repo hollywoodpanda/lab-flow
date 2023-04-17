@@ -5,8 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
-name = "git-lab"
+name = "git-flow"
 path = "src/main.rs"
 
 [dependencies]
 regex = "1.5.6"
+urlencoding = "2.1.2"
