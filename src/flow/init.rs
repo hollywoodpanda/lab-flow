@@ -11,6 +11,7 @@ use crate::config::constants::{
     DEVELOP_BRANCH_NAME_KEY,
     MAIN_BRANCH_NAME_KEY,
 };
+use crate::{info, error};
 
 pub enum Script {}
 
@@ -66,41 +67,41 @@ pub fn is_initiated () -> bool {
 pub fn show () {
 
     let feature_branch_name = match Store::get(FEATURE_BRANCH_NAME_KEY) {
-        Ok(value) => value,
+        Ok(value) => String::from(value.trim()),
         Err(_) => String::from("[NOT FOUND]")
     };
 
     let bugfix_branch_name = match Store::get(BUGFIX_BRANCH_NAME_KEY) {
-        Ok(value) => value,
+        Ok(value) => String::from(value.trim()),
         Err(_) => String::from("[NOT FOUND]")
     };
 
     let hotfix_branch_name = match Store::get(HOTFIX_BRANCH_NAME_KEY) {
-        Ok(value) => value,
+        Ok(value) => String::from(value.trim()),
         Err(_) => String::from("[NOT FOUND]")
     };
 
     let release_branch_name = match Store::get(RELEASE_BRANCH_NAME_KEY) {
-        Ok(value) => value,
+        Ok(value) => String::from(value.trim()),
         Err(_) => String::from("[NOT FOUND]")
     };
 
     let develop_branch_name = match Store::get(DEVELOP_BRANCH_NAME_KEY) {
-        Ok(value) => value,
+        Ok(value) => String::from(value.trim()),
         Err(_) => String::from("[NOT FOUND]")
     };
 
     let main_branch_name = match Store::get(MAIN_BRANCH_NAME_KEY) {
-        Ok(value) => value,
+        Ok(value) => String::from(value.trim()),
         Err(_) => String::from("[NOT FOUND]")
     };
 
-    println!("The feature branch prefix is {}", feature_branch_name);
-    println!("The bugfix branch prefix is {}", bugfix_branch_name);
-    println!("The hotfix branch prefix is {}", hotfix_branch_name);
-    println!("The release branch prefix is {}", release_branch_name);
-    println!("The develop branch name is {}", develop_branch_name);
-    println!("The main branch name is {}", main_branch_name);
+    info!("The feature branch prefix is {}", feature_branch_name);
+    info!("The bugfix branch prefix is {}", bugfix_branch_name);
+    info!("The hotfix branch prefix is {}", hotfix_branch_name);
+    info!("The release branch prefix is {}", release_branch_name);
+    info!("The develop branch name is {}", develop_branch_name);
+    info!("The main branch name is {}", main_branch_name);
 
 }
 
@@ -277,7 +278,7 @@ fn read_branch_name (
     loop {
 
         // 1. Show the given message to the user.
-        println!("{}", message);
+        info!("{}", message);
 
         // 2. Read the user input.
         match std::io::stdin().read_line(&mut branch_name) {
@@ -307,14 +308,14 @@ fn read_branch_name (
 
         // 7. If the user entered a branch name that is already taken, we keep asking for a new one.
         if already_used_names.contains(&branch_name) || ! add_suffix_slash && already_used_names.contains(&format!("{}/", &branch_name)) {
-            println!("The branch name '{}' is already taken. Please enter a new one.", branch_name);
+            error!("The branch name '{}' is already taken. Please enter a new one.", branch_name);
             branch_name = String::new();
             continue;
         }
 
         // 8. Validating if the given name is acceptable.
         if ! is_given_branch_name_valid(&branch_name) {
-            println!("The branch name '{}' is not valid. Please enter a new one.", branch_name);
+            error!("The branch name '{}' is not valid. Please enter a new one.", branch_name);
             branch_name = String::new();
             continue;
         }
@@ -340,7 +341,7 @@ fn stage_and_commit_all_files () -> Result<(), Box<InitError>> {
                 Ok(_) => {},
                 Err(e) => {
 
-                    println!("We could not commit the staged files. Please do it manually. Error: {}", e);
+                    error!("We could not commit the staged files. Please do it manually. Error: {}", e);
 
                 }
             };
@@ -350,7 +351,7 @@ fn stage_and_commit_all_files () -> Result<(), Box<InitError>> {
 
             let error_message = format!("We could not stage all files. Please do it manually. Error: {}", e);
 
-            println!("{}", &error_message);
+            error!("{}", &error_message);
 
             return Err(Box::new(InitError::new(error_message)));
 
@@ -370,7 +371,7 @@ fn push_branch (branch_name: &str) {
         Ok(_) => {},
         Err(_) => {
 
-            println!("We could not push the branch '{}' to the remote repository. Please do it manually.", branch_name);
+            error!("We could not push the branch '{}' to the remote repository. Please do it manually.", branch_name);
 
         }
     };
@@ -387,7 +388,7 @@ fn create_branch_develop (develop_branch_name: &str) -> Result<(), Box<InitError
 
                     let error_message = format!("We could not checkout to the develop branch. Error: {}", e);
 
-                    eprintln!("{}", &error_message);
+                    error!("{}", &error_message);
 
                     return Err(Box::new(InitError::new(error_message)));
 
@@ -399,7 +400,7 @@ fn create_branch_develop (develop_branch_name: &str) -> Result<(), Box<InitError
 
             let error_message = format!("We could not create the develop branch. Error: {}", err);
 
-            eprintln!("{}", &error_message);
+            error!("{}", &error_message);
 
             if ! is_already_exists_message(&err) {
 
@@ -436,7 +437,7 @@ fn create_branch_main (main_branch_name: &str) -> Result<(), Box<InitError>> {
                     Ok(_) => {},
                     Err(e) => {
 
-                        println!("The main branch already exists, but we could not checkout to it. Error: {}", e);
+                        error!("The main branch already exists, but we could not checkout to it. Error: {}", e);
 
                         return Err(Box::new(InitError::new(e)));
 

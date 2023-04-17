@@ -48,7 +48,7 @@ impl Browser {
                 }
 
             },
-            None => Err(String::from("[ERROR] No remote url found."))
+            None => Err(String::from("No remote url found."))
 
         };
 

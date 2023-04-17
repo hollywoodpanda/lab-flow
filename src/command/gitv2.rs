@@ -1,5 +1,5 @@
 use regex::Regex;
-use crate::{command::runner::{Runner}, config::constants::COMMIT_HASH_REGEX_PATTERN};
+use crate::{command::runner::{Runner}, config::constants::COMMIT_HASH_REGEX_PATTERN, info, working, error};
 
 /**
  * git-flow vs git (Very cool comparison)
@@ -40,7 +40,7 @@ impl GitV2 {
         match Runner::run("git remote -v") {
             Ok(remote) => {
 
-                println!("[DEBUG]  raw remote: {}", remote);
+                info!("Raw remote is {}", remote);
 
                 let regex = match Regex::new(r"origin\s+(?P<url>.+)\s+\(push\)") {
 
@@ -141,14 +141,14 @@ impl GitV2 {
 
         match GitV2::status() {
             Ok(output) => {
-                println!("Git is already initiated");
+                info!("Git is already initiated");
                 Ok(output)
             },
             Err(error_message) => {
-                println!("Git is not initiated: {}", error_message);
+                working!("Git is not initiated: {}", error_message);
                 match Runner::run("git init") {
                     Ok(output) => {
-                        println!("Git is initiated");
+                        info!("Git is initiated");
                         Ok(output)
                     },
                     Err(e) => Err(e)
@@ -246,8 +246,8 @@ impl GitV2 {
     /// 
     /// ```rust
     /// match GitV2::remove_local_branch(Some("feature/"), "my-feature") {
-    ///     Ok(output) => println!("Branch removed: {}", output),
-    ///     Err(error_message) => println!("Error removing branch: {}", error_message)
+    ///     Ok(output) => success!("Branch removed: {}", output),
+    ///     Err(error_message) => error!("Error removing branch: {}", error_message)
     /// }
     /// ```
     /// 
@@ -302,7 +302,7 @@ impl GitV2 {
         let branch_only_commits_result = match Runner::run(&command) {
             Ok(output) => output,
             Err(err) => {
-                println!("[ERROR] {}", err);
+                error!("{}", err);
                 return Err(format!("{}", err));
             },
         };
@@ -310,7 +310,7 @@ impl GitV2 {
         let regex: Regex = match Regex::new(COMMIT_HASH_REGEX_PATTERN) {
             Ok(regex) => regex,
             Err(err) => {
-                println!("[ERROR] {}", err);
+                error!("{}", err);
                 return Err(format!("{}", err));
             }
         };
@@ -347,7 +347,7 @@ impl GitV2 {
         let branch_commits_result = match Runner::run(&command) {
             Ok(output) => output,
             Err(err) => {
-                println!("[ERROR] {}", err);
+                error!("{}", err);
                 return Err(format!("{}", err));
             }
         };
@@ -355,7 +355,7 @@ impl GitV2 {
         let regex = match Regex::new(COMMIT_HASH_REGEX_PATTERN) {
             Ok(regex) => regex,
             Err(err) => {
-                println!("[ERROR] {}", err);
+                error!("{}", err);
                 return Err(format!("{}", err));
             }
         };

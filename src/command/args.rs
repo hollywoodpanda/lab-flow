@@ -5,6 +5,10 @@ use crate::flow::init::Script;
 use crate::command::gitv2::GitV2;
 
 use crate::config::constants::DEVELOP_BRANCH_NAME_KEY;
+use crate::info;
+use crate::working;
+use crate::success;
+use crate::error;
 
 use super::browser::Browser;
 
@@ -147,7 +151,13 @@ impl Action {
     fn init () -> Result<(), String> {
         
         if Script::is_initiated() {
+
+            info!("Lab flow is already initiated.");
+
+            Script::show();
+
             return Ok(());
+
         }
 
         match Script::create() {
@@ -160,7 +170,7 @@ impl Action {
 
     fn start (branch: &Branch, _source_branch: &Option<Branch>) -> Result<(), String> {
 
-        println!("[DEBUG] Start called!");
+        working!("Starting branch {}", branch.name());
 
         let mut prefix_text: String = String::new();
 
@@ -176,14 +186,14 @@ impl Action {
             _ => Some(&prefix_text)
         };
 
-        println!("[DEBUG] Prefix is {:?}", &prefix);
+        working!("Prefix is {:?}", &prefix);
 
         let develop_name = match Store::get(DEVELOP_BRANCH_NAME_KEY) {
             Ok(name) => name,
             Err(e) => { return Err(e); }
         };
 
-        println!("[DEBUG] Develop name is {}", develop_name);
+        working!("Develop name is {}", develop_name);
 
         // Vamos pra develop...
         match GitV2::checkout(None, &develop_name, false) {
@@ -191,7 +201,7 @@ impl Action {
             Err(e) => { return Err(e); }
         }
 
-        println!("[DEBUG] Checkout to develop done!");
+        success!("Checkout to develop done!");
 
         // Criamos a branch nova...
         match GitV2::checkout(prefix, branch.name(), true) {
@@ -199,15 +209,15 @@ impl Action {
             Err(e) => { return Err(e); }
         }
 
-        println!("[DEBUG] Checkout of branch {} done!", &branch.name());
+        success!("Checkout of branch {} done!", &branch.name());
 
         // Damos push caso exista o remote
         match GitV2::push(&format!("{}{}", &prefix_text, &branch.name()), true) {
             Ok(_) => {},
-            Err(_) => { println!("[DEBUG] Error pushing to remote... Is there a remote server?"); }
+            Err(_) => { error!("Error pushing to remote... Is there a remote server?"); }
         }
 
-        println!("[DEBUG] Push done!");
+        success!("Push done!");
 
         Ok(())
 
@@ -240,18 +250,16 @@ impl Action {
         // 1. Tem remoto?
         if GitV2::is_remote() {
 
-            println!("[DEBUG] Branch fullname: {}", &branch_fullname);
-
             // 1.1. Se não tem, criamos branch no remoto. Se tem, atualizamos no remoto            
             match GitV2::push(&branch_fullname, ! GitV2::exists_remote(&branch_fullname)) {
-                Ok(_) => { println!("[DEBUG] Branch {} pushed to remote!", &branch_fullname); },
+                Ok(_) => { success!("Branch {} pushed to remote!", &branch_fullname); },
                 Err(e) => { return Err(e); }
             }
 
             branch_sources.iter().for_each(|source| {
                 match Browser::merge_request(&branch, source) {
                     Ok(_) => {},
-                    Err(e) => { println!("[ERROR] Something weird while opening merge request 🫣: {}", e); }
+                    Err(e) => { error!("Something weird while opening merge request 🫣: {}", e); }
                 }
             });
 
@@ -278,7 +286,7 @@ impl Action {
                     &target_branch.name()
                 ) {
                     Ok(_) => {},
-                    Err(e) => { println!("[ERROR] Something weird while merging local branches 🫣: {}", e); }
+                    Err(e) => { error!("Something weird while merging local branches 🫣: {}", e); }
                 }
             });
         }
@@ -297,7 +305,7 @@ impl Action {
 
         // 1.3. ... e agora podemos remover a branch local (já estamos na develop)
         match GitV2::remove_local_branch(branch_prefix_option_str, &branch.name()) {
-            Ok(_) => { println!("[DEBUG] Branch {} removed from local", &branch_fullname); },
+            Ok(_) => { success!("Branch {} removed from local", &branch_fullname); },
             Err(e) => { return Err(e); }
         }
             
