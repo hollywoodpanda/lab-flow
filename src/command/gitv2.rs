@@ -200,12 +200,14 @@ impl GitV2 {
     ///
     /// Commits the changes with the given message
     /// 
-    pub fn commit (message: String) -> Result<String, String> {
+    pub fn commit (message: String, allow_empty: bool) -> Result<String, String> {
 
-        match Runner::run(&format!("git commit -m \"{}\"", message)) {
-            Ok(output) => Ok(output),
-            Err(e) => Err(e)
-        }
+        let allow_empty = match allow_empty {
+            true => "--allow-empty",
+            false => "",
+        };
+
+        return Runner::run(&format!("git commit -m \"{}\" {}", message, allow_empty));
 
     }
 

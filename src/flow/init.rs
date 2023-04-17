@@ -336,7 +336,7 @@ fn stage_and_commit_all_files () -> Result<(), Box<InitError>> {
         Ok(_) => {
 
             // We need to commit the staged files.
-            match GitV2::commit(String::from("Initial commit")) {
+            match GitV2::commit(String::from("Initial commit"), true) {
                 Ok(_) => {},
                 Err(e) => {
 
